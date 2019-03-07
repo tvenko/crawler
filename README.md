@@ -1,2 +1,15 @@
 # IEPS_assignment_1_web_crawler
 TODO
+
+
+# LINK DO NAVODIL:
+http://zitnik.si/teaching/wier/PA1.html
+
+# What to submit
+
+Only one of the group members should make a submission of the assignment to moodle. The submission should contain only a link to the repository that contains the following:
+
+a file db.gz - Crawldb database dump pg_dump (dbname) | gzip > db.gz (The dump must contain only data from the sites given as a seed URL list above!).
+a file report.pdf - PDF report.
+a file README.md - Short description of the project and instructions to install, set up and run the crawler.
+a folder crawler - Implementation of the crawler.
