@@ -1,15 +1,17 @@
-import java.util.ArrayList;
+import java.util.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.util.concurrent.ExecutorService;
+import java.util.regex.Pattern;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-public class Crawler
+public class Crawler implements Runnable
 {
 	/**
 	 * TODO	
@@ -50,129 +52,118 @@ public class Crawler
 	 *   
 	 *   Database
 	 */
-    public ArrayList<String> frontier;
-    public ArrayList<String> preiskana;
-	public ArrayList<String> images;
-	public Elements documents;
 
-    public void crawl()
-    {
-    	// Strani, ki jih moramo preiskati
-    	frontier = new ArrayList<String>();
-        preiskana = new ArrayList<String>();
-		images = new ArrayList<String>();
+	final static Pattern urlPattern = Pattern.compile("(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]");
 
-		//Set<String> result = new HashSet<>();
+	private final String url;
+	private final ExecutorService executor;
+	private final Map<String, Zgodovina> zgodovina;
 
-        //seznam dokumentov
-		documents = new Elements();
+	private final ArrayList<String> frontier;
 
-        //frontier.add("http://evem.gov.si/evem/drzavljani/zacetna.evem");
-        //frontier.add("https://e-uprava.gov.si/");
-        //frontier.add("https://podatki.gov.si/");
-        frontier.add("http://www.e-prostor.gov.si/");
+	public Crawler(String url, ExecutorService executor, Map<String, Zgodovina> zgodovina) {
+		this.url = url;
+		this.executor = executor;
+		this.zgodovina = zgodovina;
+		this.frontier = new ArrayList<String>();
+	}
 
-        while(!frontier.isEmpty()) {
-            visit(frontier.get(0));
-            frontier.remove(0);
-        }
-    }
-    
-    public void visit(String url)
-    {
-        if(!preiskana.contains(url)) {
-            try {
-                preiskana.add(url);
-                
-                // Fetch the HTML code
-				System.out.println("url: " + url + "------" + frontier.size());
-                Document document = Jsoup.connect(url).get();
-                
-                // Parse the HTML to extract links to other URLs
-                Elements linksOnPage = document.select("a[href]");
-
-                // img with src ending .png
-                Elements pngs = document.select("img[src$=.png]");
-
-				// img with src ending .jpg
-				Elements jpgs = document.select("img[src$=.jpg]");
-
-				// For each extracted png image.
-				for (Element s : pngs) {
-					//System.out.println("SRC do slike (png): " + s.attr("abs:src"));
-					images.add(s.attr("abs:src"));
+	public void run() {
+		visit();
+		robots();
+		for (String u : frontier) {
+			synchronized(zgodovina) {
+				if (zgodovina.containsKey(u)) {
+					zgodovina.get(u).n++;
+				} else {
+					zgodovina.put(u, new Zgodovina(u, url));
+					executor.submit(new Crawler(u, executor, zgodovina));
 				}
+			}
+		}
+	}
 
-				// For each extracted jpg image
-				for (Element s : jpgs) {
-					//System.out.println("SRC do slike (jpg): " + s.attr("abs:src"));
-					images.add(s.attr("abs:src"));
+	public void visit()
+	{
+		try {
+
+			// Fetch the HTML code
+			System.out.println("-------------"+"url: " + url);
+			Document document = Jsoup.connect(url).get();
+
+			// Parse the HTML to extract links to other URLs
+			Elements linksOnPage = document.select("a[href]");
+
+			// img with src ending .png
+			Elements pngs = document.select("img[src$=.png]");
+
+			// img with src ending .jpg
+			Elements jpgs = document.select("img[src$=.jpg]");
+
+			String p;
+			for (Element page : linksOnPage) {
+				p = page.attr("abs:href");
+				if(!p.contains("#") &&
+						!p.contains("?") &&
+						p.length() > 1) {
+					if(p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx"))
+						continue;//documents.add(page);
+					else if((p.contains("http://") || p.contains("https://")) &&
+							(!p.contains(".zip") && !p.contains(".xlsx") &&
+									!p.contains(".xls") && !p.contains(".pps") &&
+									!p.contains(".jpg") && !p.contains(".png") &&
+									!p.contains(".jspx") && !p.contains(".jsp") &&
+									!p.contains(".mp4") && !p.contains(".exe")))
+						frontier.add(p);
 				}
+			}
 
-				String p;
 
-                // For each extracted URL...
-                for (Element page : linksOnPage) {
-					p = page.attr("abs:href");
-                	if(!p.contains("#") &&
-							!p.contains("?") &&
-							!frontier.contains(p) &&
-							p.length() > 1) {
-                		if(p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx"))
-							documents.add(page);
-                		else if((p.contains("http://") || p.contains("https://")) &&
-							   (!p.contains(".zip") && !p.contains(".xlsx") &&
-								!p.contains(".xls") && !p.contains(".pps") &&
-								!p.contains(".jpg") && !p.contains(".png") &&
-								!p.contains(".jspx") && !p.contains(".jsp") &&
-								!p.contains(".mp4") && !p.contains(".exe")))
-							frontier.add((page.attr("abs:href")));
-					}
-                }
+			// For each extracted png image.
+			/*for (Element s : pngs) {
+				//System.out.println("SRC do slike (png): " + s.attr("abs:src"));
+				images.add(s.attr("abs:src"));
+			}
 
-				// For each domain respect the robots.txt file if it exists.
-				//TODO A je pravilno, da je na tem mestu robots ??
-				robots(url);
+			// For each extracted jpg image
+			for (Element s : jpgs) {
+				//System.out.println("SRC do slike (jpg): " + s.attr("abs:src"));
+				images.add(s.attr("abs:src"));
+			}*/
 
-            } catch (IOException e) {
-                System.err.println("For '" + url + "': " + e.getMessage());
-            }
-        }
-    }
-    
+		} catch (IOException e) {
+			System.err.println("For '" + url + "': " + e.getMessage());
+		}
+	}
+
     // For each domain respect the robots.txt file if it exists.
-    public void robots(String url)
+    public void robots()
     {
-		String robot = url + "/robots.txt";
-    	if(!preiskana.contains(url)) {
-    		// JSoup is really built for reading and parsing HTML files. The robots.txt file is not an HTML file and would be better to be read by a simple input stream. 
-    		try {
-    			BufferedReader in = new BufferedReader(new InputStreamReader(new URL(robot).openStream()));
-    	        String subLink = null;
+		String robots = url + "/robots.txt";
+    	try {
+			BufferedReader in = new BufferedReader(new InputStreamReader(new URL(robots).openStream()));
+			String subLink = null;
 
-    	        System.out.println("Ma kaj odstranimo ?  "+frontier.size());
-    	        while((subLink = in.readLine()) != null) {
-    	        	
-    	        	// If a sitemap is defined, all the URLs that are defined within it, should be added to the frontier.
-    	        	if (subLink.toLowerCase().contains("sitemap")){
-    	        		//System.out.println("---------------------"+subLink.split("map: ")[1]);
-    	                frontier.add(subLink.split("map: ")[1]);
-    	            }
 
-    	            //TODO kul?
-					// If a Disallow is defined, all the URLs that are disallow should be removed from the frontier
-					if (subLink.toLowerCase().contains("disallow")){
-						System.out.println(subLink.split("allow: ")[1]);
-						System.out.println("----disallow pages: "+url + subLink.split("allow: ")[1]);
-						frontier.remove(url + "/" + subLink.replace("Disallow: /", ""));
-					}
+			while((subLink = in.readLine()) != null) {
 
-    	        }
-				System.out.println("Maybe ?  "+frontier.size());
-    	    } catch (IOException e) {
-    	    	System.err.println("For '" + url + "': " + e.getMessage());
-    	    }	
-        }
+				// If a sitemap is defined, all the URLs that are defined within it, should be added to the frontier.
+				if (subLink.toLowerCase().contains("sitemap")){
+					//System.out.println("---------------------"+subLink.split("map: ")[1]);
+					frontier.add(subLink.split("map: ")[1]);
+				}
+
+				//TODO
+				// If a Disallow is defined, all the URLs that are disallow should be removed from the frontier
+				if (subLink.toLowerCase().contains("disallow")){
+					System.out.println("----disallow pages: "+url + subLink.split("allow: ")[1]);
+					frontier.remove(url + subLink.split("allow: ")[1]);
+				}
+
+			}
+		} catch (IOException e) {
+			System.err.println("For '" + url + "': " + e.getMessage());
+		}
     }
 }
 
