@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.jsoup.Jsoup;
@@ -51,6 +52,8 @@ public class Crawler implements Runnable
 	 *   
 	 *   
 	 *   Database
+	 *
+	 *   robots sam za
 	 */
 
 	final static Pattern urlPattern = Pattern.compile("(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]");
@@ -58,37 +61,47 @@ public class Crawler implements Runnable
 	private final String url;
 	private final ExecutorService executor;
 	private final Map<String, Zgodovina> zgodovina;
+	private final Queue<Frontier> frontier;
 
-	private final ArrayList<String> frontier;
+	private final boolean logger;
 
-	public Crawler(String url, ExecutorService executor, Map<String, Zgodovina> zgodovina) {
+	public Crawler(String url, ExecutorService executor, Map<String, Zgodovina> zgodovina, Queue<Frontier> frontier, boolean logger) {
 		this.url = url;
 		this.executor = executor;
 		this.zgodovina = zgodovina;
-		this.frontier = new ArrayList<String>();
+		this.frontier = frontier;
+		this.logger = logger;
 	}
 
 	public void run() {
 		visit();
 		robots();
-		for (String u : frontier) {
-			synchronized(zgodovina) {
+		if(logger)
+			System.out.println(url + " " + executor.toString());
+		if(logger)
+			System.out.println("Velikost frontier-ja: " + frontier.size());
+		while (!frontier.isEmpty()){
+			synchronized(frontier) {
+				Frontier f = frontier.remove();
+				String u = f.getUrl();
 				if (zgodovina.containsKey(u)) {
 					zgodovina.get(u).n++;
 				} else {
-					zgodovina.put(u, new Zgodovina(u, url));
-					executor.submit(new Crawler(u, executor, zgodovina));
+					zgodovina.put(u, new Zgodovina(u, f.getUrlParent()));
+					executor.submit(new Crawler(u, executor, zgodovina, frontier, logger));
 				}
 			}
 		}
 	}
 
+	//TODO - popravi parsanje linkov
 	public void visit()
 	{
 		try {
 
 			// Fetch the HTML code
-			System.out.println("-------------"+"url: " + url);
+			if(logger)
+				System.out.println("Trenutni url: " + url);
 			Document document = Jsoup.connect(url).get();
 
 			// Parse the HTML to extract links to other URLs
@@ -114,7 +127,7 @@ public class Crawler implements Runnable
 									!p.contains(".jpg") && !p.contains(".png") &&
 									!p.contains(".jspx") && !p.contains(".jsp") &&
 									!p.contains(".mp4") && !p.contains(".exe")))
-						frontier.add(p);
+						frontier.add(new Frontier(p, url));
 				}
 			}
 
@@ -139,30 +152,44 @@ public class Crawler implements Runnable
     // For each domain respect the robots.txt file if it exists.
     public void robots()
     {
-		String robots = url + "/robots.txt";
+    	String baseUrl = "";
+    	// Iz url dobimo BASE URL
+		try {
+			URL base = new URL(url);
+			//String path = base.getFile().substring(0, xx.getFile().lastIndexOf('/'));
+			baseUrl = base.getProtocol() + "://" + base.getHost();
+		}
+		catch (Exception e)
+		{
+			System.err.println("For '" + baseUrl + "': " + e.getMessage() + " can't get base url");
+		}
+
+		String robots = baseUrl + "/robots.txt";
     	try {
 			BufferedReader in = new BufferedReader(new InputStreamReader(new URL(robots).openStream()));
 			String subLink = null;
 
-
+			String sitemap;
 			while((subLink = in.readLine()) != null) {
 
 				// If a sitemap is defined, all the URLs that are defined within it, should be added to the frontier.
 				if (subLink.toLowerCase().contains("sitemap")){
-					//System.out.println("---------------------"+subLink.split("map: ")[1]);
-					frontier.add(subLink.split("map: ")[1]);
+					sitemap = subLink.split("map: ")[1];
+					//if(frontier.contains())
+					frontier.add(new Frontier(subLink.split("map: ")[1], baseUrl));
 				}
 
-				//TODO
+				//TODO ??
 				// If a Disallow is defined, all the URLs that are disallow should be removed from the frontier
 				if (subLink.toLowerCase().contains("disallow")){
-					System.out.println("----disallow pages: "+url + subLink.split("allow: ")[1]);
-					frontier.remove(url + subLink.split("allow: ")[1]);
+					if(logger)
+						System.out.println("----disallow pages: "+ baseUrl + subLink.split("llow: ")[1]);
+					frontier.remove(baseUrl + subLink.split("llow: ")[1]);
 				}
 
 			}
 		} catch (IOException e) {
-			System.err.println("For '" + url + "': " + e.getMessage());
+			System.err.println("For '" + baseUrl + "': " + e.getMessage());
 		}
     }
 }

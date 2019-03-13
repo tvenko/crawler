@@ -1,5 +1,4 @@
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -12,18 +11,34 @@ public class Main
 
         Map<String, Zgodovina> zgodovina = new LinkedHashMap<String, Zgodovina>();
 
-        zgodovina.put("http://www.e-prostor.gov.si/", new Zgodovina("http://www.e-prostor.gov.si/", ""));
-
-        //frontier.add("http://evem.gov.si/evem/drzavljani/zacetna.evem");
-        //frontier.add("https://e-uprava.gov.si/");
-        //frontier.add("https://podatki.gov.si/");
-        //frontier.add("http://www.e-prostor.gov.si/");
+        Queue<Frontier> frontier = new LinkedList<Frontier>();
 
 
-        executor.submit(new Crawler("http://www.e-prostor.gov.si/", executor, zgodovina));
+        boolean logger = true;
 
+        frontier.add(new Frontier("http://evem.gov.si/evem/drzavljani/zacetna.evem", ""));
+
+        zgodovina.put("http://evem.gov.si/evem/drzavljani/zacetna.evem", new Zgodovina("http://evem.gov.si/evem/drzavljani/zacetna.evem",""));
+
+        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
+
+        frontier.add(new Frontier("https://podatki.gov.si/", ""));
+
+        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
+
+
+        executor.submit(new Crawler(frontier.remove().getUrl(), executor, zgodovina, frontier, logger));
+
+        /**
+         *
+         * TODO
+         *
+         * POZOR
+         *
+         * trenutno dela nas crawler samo 30 sekund !!!!!
+         */
         try {
-            executor.awaitTermination(5*60, TimeUnit.SECONDS);
+            executor.awaitTermination(30, TimeUnit.SECONDS);
             if (!executor.isTerminated()) {
                 System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
                 executor.shutdownNow();
@@ -33,8 +48,15 @@ public class Main
             Thread.currentThread().interrupt();
         }
 
-    //	Crawler crawler = new Crawler();
-    //	crawler.crawl();
+        System.out.println("--------------------Zgodovina ----------------");
+        for (String name: zgodovina.keySet()){
+
+            String key = name;
+            String value = zgodovina.get(name).urlParent;
+            System.out.println(key + " " + value);
+        }
+        System.out.println("-------------------- Konec zgodovine ----------------");
+        System.out.println(zgodovina.size());
     }
 }
 
