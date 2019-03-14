@@ -1,3 +1,6 @@
+package main.java;
+
+import java.sql.Timestamp;
 import java.util.*;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -7,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import main.java.db.DatabaseManager;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -62,14 +66,16 @@ public class Crawler implements Runnable
 	private final ExecutorService executor;
 	private final Map<String, Zgodovina> zgodovina;
 	private final Queue<Frontier> frontier;
+	private final DatabaseManager dbManager;
 
 	private final boolean logger;
 
-	public Crawler(String url, ExecutorService executor, Map<String, Zgodovina> zgodovina, Queue<Frontier> frontier, boolean logger) {
+	public Crawler(String url, ExecutorService executor, Map<String, Zgodovina> zgodovina, Queue<Frontier> frontier, DatabaseManager dbManager, boolean logger) {
 		this.url = url;
 		this.executor = executor;
 		this.zgodovina = zgodovina;
 		this.frontier = frontier;
+		this.dbManager = dbManager;
 		this.logger = logger;
 	}
 
@@ -88,7 +94,7 @@ public class Crawler implements Runnable
 					zgodovina.get(u).n++;
 				} else {
 					zgodovina.put(u, new Zgodovina(u, f.getUrlParent()));
-					executor.submit(new Crawler(u, executor, zgodovina, frontier, logger));
+					executor.submit(new Crawler(u, executor, zgodovina, frontier, dbManager, logger));
 				}
 			}
 		}
@@ -144,6 +150,8 @@ public class Crawler implements Runnable
 				images.add(s.attr("abs:src"));
 			}*/
 
+			saveToDB(document);
+
 		} catch (IOException e) {
 			System.err.println("For '" + url + "': " + e.getMessage());
 		}
@@ -192,5 +200,9 @@ public class Crawler implements Runnable
 			System.err.println("For '" + baseUrl + "': " + e.getMessage());
 		}
     }
+
+    private void saveToDB(Document document) {
+		dbManager.addPageToDB("HTML", url, document.toString(), 200, new Timestamp(System.currentTimeMillis()));
+	}
 }
 

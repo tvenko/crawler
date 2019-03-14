@@ -1,3 +1,5 @@
+package main.java;
+
 import java.util.Date;
 
 public class Image {

@@ -1,3 +1,5 @@
+package main.java;
+
 public class Frontier {
 
     public String url;

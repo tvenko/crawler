@@ -1,3 +1,7 @@
+package main.java;
+
+import main.java.db.DatabaseManager;
+
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -13,7 +17,6 @@ public class Main
 
         Queue<Frontier> frontier = new LinkedList<Frontier>();
 
-
         boolean logger = true;
 
         frontier.add(new Frontier("http://evem.gov.si/evem/drzavljani/zacetna.evem", ""));
@@ -26,8 +29,7 @@ public class Main
 
         frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
 
-
-        executor.submit(new Crawler(frontier.remove().getUrl(), executor, zgodovina, frontier, logger));
+        executor.submit(new Crawler(frontier.remove().getUrl(), executor, zgodovina, frontier, new DatabaseManager(), logger));
 
         /**
          *

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_2.xsd"
+             version="2.2">
+
+    <persistence-unit name="crawler JPA">
+        <class>main.java.db.DataTypeEntity</class>
+        <class>main.java.db.ImageEntity</class>
+        <class>main.java.db.LinkEntity</class>
+        <class>main.java.db.PageEntity</class>
+        <class>main.java.db.PageDataEntity</class>
+        <class>main.java.db.PageTypeEntity</class>
+        <class>main.java.db.SiteEntity</class>
+        <properties>
+            <!--<property name="toplink.jdbc.url" value="jdbc:postgresql://localhost:5432/crawldb"/>-->
+            <!--<property name="toplink.jdbc.driver" value="org.postgresql.Driver"/>-->
+            <!--<property name="hibernate.connection.url" value="jdbc:postgresql://localhost:5432/crawldb"/>-->
+            <!--<property name="hibernate.connection.driver_class" value="org.postgresql.Driver"/>-->
+            <!--<property name="openjpa.ConnectionURL" value="jdbc:postgresql://localhost:5432/crawldb"/>-->
+            <!--<property name="openjpa.ConnectionDriverName" value="org.postgresql.Driver"/>-->
+            <!--<property name="eclipselink.jdbc.url" value="jdbc:postgresql://localhost:5432/crawldb"/>-->
+            <!--<property name="eclipselink.jdbc.driver" value="org.postgresql.Driver"/>-->
+
+            <property name="javax.persistence.jdbc.driver" value="org.postgresql.Driver" />
+            <property name="javax.persistence.jdbc.url"
+                      value="jdbc:postgresql://localhost:5432/crawldb" />
+            <property name="javax.persistence.jdbc.user" value="postgres" />
+            <property name="javax.persistence.jdbc.password" value="admin" />
+        </properties>
+    </persistence-unit>
+</persistence>
