@@ -13,3 +13,8 @@ a file db.gz - Crawldb database dump pg_dump (dbname) | gzip > db.gz (The dump m
 a file report.pdf - PDF report.
 a file README.md - Short description of the project and instructions to install, set up and run the crawler.
 a folder crawler - Implementation of the crawler.
+
+
+# install
+* docker run -d --name pg-database-crawler -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_DB=crawldb -p 5432:5432 postgres:11.2
+* v ideji ne pozabi obkljukat show all shemas
