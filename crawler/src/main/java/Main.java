@@ -1,6 +1,6 @@
 package src.main.java;
 
-import main.java.db.DatabaseManager;
+import src.main.java.db.DatabaseManager;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;

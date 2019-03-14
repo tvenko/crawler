@@ -1,4 +1,4 @@
-package main.java.db;
+package src.main.java.db;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
