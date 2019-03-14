@@ -5,13 +5,13 @@
              version="2.2">
 
     <persistence-unit name="crawler JPA">
-        <class>main.java.db.DataTypeEntity</class>
-        <class>main.java.db.ImageEntity</class>
-        <class>main.java.db.LinkEntity</class>
-        <class>main.java.db.PageEntity</class>
-        <class>main.java.db.PageDataEntity</class>
-        <class>main.java.db.PageTypeEntity</class>
-        <class>main.java.db.SiteEntity</class>
+        <class>src.main.java.db.DataTypeEntity</class>
+        <class>src.main.java.db.ImageEntity</class>
+        <class>src.main.java.db.LinkEntity</class>
+        <class>src.main.java.db.PageEntity</class>
+        <class>src.main.java.db.PageDataEntity</class>
+        <class>src.main.java.db.PageTypeEntity</class>
+        <class>src.main.java.db.SiteEntity</class>
         <properties>
             <!--<property name="toplink.jdbc.url" value="jdbc:postgresql://localhost:5432/crawldb"/>-->
             <!--<property name="toplink.jdbc.driver" value="org.postgresql.Driver"/>-->
