@@ -1,4 +1,4 @@
-package main.java;
+package src.main.java;
 
 import java.sql.Timestamp;
 import java.util.*;
