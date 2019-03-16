@@ -1,13 +1,13 @@
-package si.fri.db;
+package src.main.java.db;
 
 import javax.persistence.*;
 import java.util.Collection;
 
 @Entity
-@Table(name = "data_type", schema = "crawldb", catalog = "crawldb")
-public class DataTypeEntity {
+@Table(name = "page_type", schema = "crawldb", catalog = "crawldb")
+public class PageTypeEntity {
     private String code;
-    private Collection<PageDataEntity> pageDataByCode;
+    private Collection<PageEntity> pagesByCode;
 
     @Id
     @Column(name = "code", nullable = false, length = 20)
@@ -24,7 +24,7 @@ public class DataTypeEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        DataTypeEntity that = (DataTypeEntity) o;
+        PageTypeEntity that = (PageTypeEntity) o;
 
         if (code != null ? !code.equals(that.code) : that.code != null) return false;
 
@@ -36,12 +36,12 @@ public class DataTypeEntity {
         return code != null ? code.hashCode() : 0;
     }
 
-    @OneToMany(mappedBy = "dataTypeByDataTypeCode")
-    public Collection<PageDataEntity> getPageDataByCode() {
-        return pageDataByCode;
+    @OneToMany(mappedBy = "pageTypeByPageTypeCode")
+    public Collection<PageEntity> getPagesByCode() {
+        return pagesByCode;
     }
 
-    public void setPageDataByCode(Collection<PageDataEntity> pageDataByCode) {
-        this.pageDataByCode = pageDataByCode;
+    public void setPagesByCode(Collection<PageEntity> pagesByCode) {
+        this.pagesByCode = pagesByCode;
     }
 }

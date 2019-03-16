@@ -1,4 +1,4 @@
-package si.fri;
+package src.main.java;
 
 import java.sql.Timestamp;
 import java.util.*;
@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import si.fri.db.DatabaseManager;
+import src.main.java.db.DatabaseManager;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;

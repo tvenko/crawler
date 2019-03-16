@@ -9,7 +9,7 @@ http://zitnik.si/teaching/wier/PA1.html
 
 Only one of the group members should make a submission of the assignment to moodle. The submission should contain only a link to the repository that contains the following:
 
-a file si.fri;.db.gz - Crawldb database dump pg_dump (dbname) | gzip > si.fri;.db.gz (The dump must contain only data from the sites given as a seed URL list above!).
+a file db.gz - Crawldb database dump pg_dump (dbname) | gzip > db.gz (The dump must contain only data from the sites given as a seed URL list above!).
 a file report.pdf - PDF report.
 a file README.md - Short description of the project and instructions to install, set up and run the crawler.
 a folder crawler - Implementation of the crawler.
@@ -27,5 +27,5 @@ docker run -d --name pg-database-crawler -e POSTGRES_USER=postgres -e POSTGRES_P
 \#3 mvn clean install
 ```
 
-(\#4 For viewing si.fri;.db content, connect to database with IDE (in IntelliJ: View->Tools view->Database, add database; in tab schemas choose only schema crawldb))
+(\#4 For viewing db content, connect to database with IDE (in IntelliJ: View->Tools view->Database, add database; in tab schemas choose only schema crawldb))
 

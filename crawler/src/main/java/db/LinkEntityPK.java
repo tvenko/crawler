@@ -1,4 +1,4 @@
-package si.fri.db;
+package src.main.java.db;
 
 import javax.persistence.Column;
 import javax.persistence.Id;
