@@ -224,6 +224,9 @@ public class Crawler implements Runnable
 				}
 
 				// TODO USER AGENT CHECK HERE
+				if (subLink.toLowerCase().contains("user-agent")){
+					System.out.println("TODO: user-agent check here!");
+				}
 
 				//TODO ??
 				// If a Disallow is defined, all the URLs that are disallow should be removed from the frontier
