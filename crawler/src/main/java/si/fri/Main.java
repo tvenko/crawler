@@ -24,18 +24,19 @@ public class Main {
         Queue<Frontier> frontier = new LinkedList<Frontier>();
 
         boolean logger = true;
+        boolean loggerHTMLUnit = false;
 
-        frontier.add(new Frontier("http://evem.gov.si/evem/drzavljani/zacetna.evem", ""));
+        frontier.add(new Frontier("http://evem.gov.si/", ""));
 
-        zgodovina.put("http://evem.gov.si/evem/drzavljani/zacetna.evem", new Zgodovina("http://evem.gov.si/evem/drzavljani/zacetna.evem",""));
+        zgodovina.put("http://evem.gov.si/", new Zgodovina("http://evem.gov.si/",""));
 
-        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
+//        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
 
-        frontier.add(new Frontier("https://podatki.gov.si/", ""));
+//        frontier.add(new Frontier("https://podatki.gov.si/", ""));
 
-        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
+//        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
 
-        executor.submit(new Crawler(frontier.remove().getUrl(), executor, zgodovina, frontier, new DatabaseManager(), logger));
+        executor.submit(new Crawler(frontier.remove().getUrl(), executor, zgodovina, frontier, new DatabaseManager(), logger, loggerHTMLUnit));
 
         /**
          *
@@ -46,7 +47,7 @@ public class Main {
          * trenutno dela nas crawler samo 30 sekund !!!!!
          */
         try {
-            executor.awaitTermination(30, TimeUnit.SECONDS);
+            executor.awaitTermination(60, TimeUnit.SECONDS);
             if (!executor.isTerminated()) {
                 System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
                 executor.shutdownNow();

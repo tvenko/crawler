@@ -21,12 +21,15 @@ public class DatabaseManager {
         pageEntity.setHttpStatusCode(httpStatusCode);
         pageEntity.setAccessedTime(timeAccessed);
 
+
+        //FIXME
         try {
-            beginTx();
+//            beginTx();
             em.persist(pageEntity);
-            commitTx();
+//            commitTx();
         } catch (Exception e) {
-            rollbackTx();
+//            rollbackTx();
+            System.out.println("Can't save to db!");
         }
     }
 

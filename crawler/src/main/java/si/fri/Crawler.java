@@ -1,5 +1,10 @@
 package si.fri;
 
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebClientOptions;
+import com.gargoylesoftware.htmlunit.WebResponse;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import org.apache.commons.logging.LogFactory;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -14,6 +19,8 @@ import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
+import java.util.logging.Level;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Crawler implements Runnable
@@ -69,14 +76,19 @@ public class Crawler implements Runnable
 	private final DatabaseManager dbManager;
 
 	private final boolean logger;
+	private final boolean loggerHTMLUnit;
 
-	public Crawler(String url, ExecutorService executor, Map<String, Zgodovina> zgodovina, Queue<Frontier> frontier, DatabaseManager dbManager, boolean logger) {
+	public Crawler(String url, ExecutorService executor,
+				   Map<String, Zgodovina> zgodovina,
+				   Queue<Frontier> frontier, DatabaseManager dbManager,
+				   boolean logger, boolean loggerHTMLUnit) {
 		this.url = url;
 		this.executor = executor;
 		this.zgodovina = zgodovina;
 		this.frontier = frontier;
 		this.dbManager = dbManager;
 		this.logger = logger;
+		this.loggerHTMLUnit = loggerHTMLUnit;
 	}
 
 	public void run() {
@@ -94,40 +106,64 @@ public class Crawler implements Runnable
 					zgodovina.get(u).n++;
 				} else {
 					zgodovina.put(u, new Zgodovina(u, f.getUrlParent()));
-					executor.submit(new Crawler(u, executor, zgodovina, frontier, dbManager, logger));
+					executor.submit(new Crawler(u, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit));
 				}
 			}
 		}
 	}
 
 	//TODO - popravi parsanje linkov
-	public void visit()
-	{
+	public void visit() {
 		try {
 
 			// Fetch the HTML code
 			if(logger)
 				System.out.println("Trenutni url: " + url);
-			Document document = Jsoup.connect(url).get();
+
+			// first run with headless browser, so we can run potential JS
+			WebClient webClient = new WebClient();
+			WebClientOptions options = webClient.getOptions();
+			options.setJavaScriptEnabled(true);
+			options.setRedirectEnabled(true);
+
+			// disable logging of htmlunit
+			if (!loggerHTMLUnit) {
+				LogFactory.getFactory().setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");
+
+				java.util.logging.Logger.getLogger("com.gargoylesoftware.htmlunit").setLevel(Level.OFF);
+				java.util.logging.Logger.getLogger("org.apache.commons.httpclient").setLevel(Level.OFF);
+			}
+
+			HtmlPage htmlPage = webClient.getPage(url);
+			WebResponse response = htmlPage.getWebResponse();
+			String content = response.getContentAsString();
+
+
+			Document document = Jsoup.parse(content);
+
+
+			// WITHOUT JS
+//			Document document = Jsoup.connect(url).get();
 
 			// Parse the HTML to extract links to other URLs
 			Elements linksOnPage = document.select("a[href]");
 
+			// Javascript
+//			Elements scriptTags = document.getElementsByTag("script");
+
 			// img with src ending .png
-			Elements pngs = document.select("img[src$=.png]");
+//			Elements pngs = document.select("img[src$=.png]");
 
 			// img with src ending .jpg
-			Elements jpgs = document.select("img[src$=.jpg]");
+//			Elements jpgs = document.select("img[src$=.jpg]");
 
 			String p;
 			for (Element page : linksOnPage) {
 				p = page.attr("abs:href");
-				if(!p.contains("#") &&
-						!p.contains("?") &&
-						p.length() > 1) {
-					if(p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx"))
+				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
+					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx"))
 						continue;//documents.add(page);
-					else if((p.contains("http://") || p.contains("https://")) &&
+					else if ((p.contains("http://") || p.contains("https://")) &&
 							(!p.contains(".zip") && !p.contains(".xlsx") &&
 									!p.contains(".xls") && !p.contains(".pps") &&
 									!p.contains(".jpg") && !p.contains(".png") &&
@@ -150,7 +186,8 @@ public class Crawler implements Runnable
 				images.add(s.attr("abs:src"));
 			}*/
 
-			saveToDB(document);
+			// FIXME???
+//			saveToDB(document);
 
 		} catch (IOException e) {
 			System.err.println("For '" + url + "': " + e.getMessage());
@@ -158,8 +195,7 @@ public class Crawler implements Runnable
 	}
 
     // For each domain respect the robots.txt file if it exists.
-    public void robots()
-    {
+    public void robots() {
     	String baseUrl = "";
     	// Iz url dobimo BASE URL
 		try {
