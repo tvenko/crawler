@@ -1,11 +1,9 @@
-package src.main.java;
+package si.fri;;
 
-import src.main.java.db.DatabaseManager;
+import si.fri.db.DatabaseManager;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class Main {
 
