@@ -7,11 +7,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class Main
-{
+public class Main {
+
+    public static final int NUMBER_OF_PARALLEL_THREADS = 5;
+
     public static void main(String[] args) {
 
-        ExecutorService executor = Executors.newFixedThreadPool(5);
+        ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_PARALLEL_THREADS);
 
         Map<String, Zgodovina> zgodovina = new LinkedHashMap<String, Zgodovina>();
 
