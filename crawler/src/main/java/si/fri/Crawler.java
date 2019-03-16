@@ -223,6 +223,8 @@ public class Crawler implements Runnable
 					frontier.add(new Frontier(subLink.split("map: ")[1], baseUrl));
 				}
 
+				// TODO USER AGENT CHECK HERE
+
 				//TODO ??
 				// If a Disallow is defined, all the URLs that are disallow should be removed from the frontier
 				if (subLink.toLowerCase().contains("disallow")){
