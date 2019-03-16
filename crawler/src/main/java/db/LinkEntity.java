@@ -1,4 +1,4 @@
-package src.main.java.db;
+package main.java.db;
 
 import javax.persistence.*;
 
