@@ -5,11 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>si.fri</groupId>
-    <artifactId>crawler</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <artifactId>crawler-root</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
 
-    <name>crawler</name>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>crawler</module>
+    </modules>
 
     <properties>
         <hibernate.version>4.3.6.Final</hibernate.version>

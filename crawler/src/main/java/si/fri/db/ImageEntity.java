@@ -1,17 +1,19 @@
-package main.java.db;
+package si.fri.db;
 
 import javax.persistence.*;
+import java.sql.Timestamp;
 import java.util.Arrays;
 
 @Entity
-@Table(name = "page_data", schema = "crawldb", catalog = "crawldb")
-public class PageDataEntity {
+@Table(name = "image", schema = "crawldb", catalog = "crawldb")
+public class ImageEntity {
     private int id;
     private Integer pageId;
-    private String dataTypeCode;
+    private String filename;
+    private String contentType;
     private byte[] data;
+    private Timestamp accessedTime;
     private PageEntity pageByPageId;
-    private DataTypeEntity dataTypeByDataTypeCode;
 
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
@@ -25,7 +27,7 @@ public class PageDataEntity {
     }
 
     @Basic
-    @Column(name = "page_id", insertable=false, updatable=false, nullable = true)
+    @Column(name = "page_id", insertable=false, updatable=false)
     public Integer getPageId() {
         return pageId;
     }
@@ -35,13 +37,23 @@ public class PageDataEntity {
     }
 
     @Basic
-    @Column(name = "data_type_code", insertable=false, updatable=false, length = 20)
-    public String getDataTypeCode() {
-        return dataTypeCode;
+    @Column(name = "filename", nullable = true, length = 255)
+    public String getFilename() {
+        return filename;
     }
 
-    public void setDataTypeCode(String dataTypeCode) {
-        this.dataTypeCode = dataTypeCode;
+    public void setFilename(String filename) {
+        this.filename = filename;
+    }
+
+    @Basic
+    @Column(name = "content_type", nullable = true, length = 50)
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
     }
 
     @Basic
@@ -54,17 +66,29 @@ public class PageDataEntity {
         this.data = data;
     }
 
+    @Basic
+    @Column(name = "accessed_time", nullable = true)
+    public Timestamp getAccessedTime() {
+        return accessedTime;
+    }
+
+    public void setAccessedTime(Timestamp accessedTime) {
+        this.accessedTime = accessedTime;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        PageDataEntity that = (PageDataEntity) o;
+        ImageEntity that = (ImageEntity) o;
 
         if (id != that.id) return false;
         if (pageId != null ? !pageId.equals(that.pageId) : that.pageId != null) return false;
-        if (dataTypeCode != null ? !dataTypeCode.equals(that.dataTypeCode) : that.dataTypeCode != null) return false;
+        if (filename != null ? !filename.equals(that.filename) : that.filename != null) return false;
+        if (contentType != null ? !contentType.equals(that.contentType) : that.contentType != null) return false;
         if (!Arrays.equals(data, that.data)) return false;
+        if (accessedTime != null ? !accessedTime.equals(that.accessedTime) : that.accessedTime != null) return false;
 
         return true;
     }
@@ -73,8 +97,10 @@ public class PageDataEntity {
     public int hashCode() {
         int result = id;
         result = 31 * result + (pageId != null ? pageId.hashCode() : 0);
-        result = 31 * result + (dataTypeCode != null ? dataTypeCode.hashCode() : 0);
+        result = 31 * result + (filename != null ? filename.hashCode() : 0);
+        result = 31 * result + (contentType != null ? contentType.hashCode() : 0);
         result = 31 * result + Arrays.hashCode(data);
+        result = 31 * result + (accessedTime != null ? accessedTime.hashCode() : 0);
         return result;
     }
 
@@ -86,15 +112,5 @@ public class PageDataEntity {
 
     public void setPageByPageId(PageEntity pageByPageId) {
         this.pageByPageId = pageByPageId;
-    }
-
-    @ManyToOne
-    @JoinColumn(name = "data_type_code", referencedColumnName = "code")
-    public DataTypeEntity getDataTypeByDataTypeCode() {
-        return dataTypeByDataTypeCode;
-    }
-
-    public void setDataTypeByDataTypeCode(DataTypeEntity dataTypeByDataTypeCode) {
-        this.dataTypeByDataTypeCode = dataTypeByDataTypeCode;
     }
 }

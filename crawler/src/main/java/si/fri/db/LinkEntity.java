@@ -1,4 +1,4 @@
-package main.java.db;
+package si.fri.db;
 
 import javax.persistence.*;
 

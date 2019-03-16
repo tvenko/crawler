@@ -1,4 +1,4 @@
-package src.main.java;
+package si.fri;
 
 public class Frontier {
 

@@ -1,8 +1,12 @@
-package src.main.java;
+package si.fri;
 
-import main.java.db.DatabaseManager;
 
-import java.util.*;
+import si.fri.db.DatabaseManager;
+
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
