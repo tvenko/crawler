@@ -21,8 +21,27 @@ public class DatabaseManager {
         pageEntity.setHttpStatusCode(httpStatusCode);
         pageEntity.setAccessedTime(timeAccessed);
 
-        em.getTransaction().begin();
-        em.persist(pageEntity);
-        em.getTransaction().commit();
+        try {
+            beginTx();
+            em.persist(pageEntity);
+            commitTx();
+        } catch (Exception e) {
+            rollbackTx();
+        }
+    }
+
+    private void beginTx() {
+        if (!em.getTransaction().isActive())
+            em.getTransaction().begin();
+    }
+
+    private void commitTx() {
+        if (em.getTransaction().isActive())
+            em.getTransaction().commit();
+    }
+
+    private void rollbackTx() {
+        if (em.getTransaction().isActive())
+            em.getTransaction().rollback();
     }
 }
