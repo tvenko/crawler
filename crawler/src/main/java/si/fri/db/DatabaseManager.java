@@ -1,9 +1,13 @@
 package si.fri.db;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
+import org.hibernate.metamodel.model.domain.internal.EntityTypeImpl;
+
+import javax.persistence.*;
+import javax.persistence.metamodel.EntityType;
+import javax.persistence.metamodel.Metamodel;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DatabaseManager {
 
@@ -21,16 +25,38 @@ public class DatabaseManager {
         pageEntity.setHttpStatusCode(httpStatusCode);
         pageEntity.setAccessedTime(timeAccessed);
 
+        em.getTransaction().begin();
+        em.persist(pageEntity);
+        em.getTransaction().commit();
 
-        //FIXME
-        try {
-//            beginTx();
-            em.persist(pageEntity);
-//            commitTx();
-        } catch (Exception e) {
-//            rollbackTx();
-            System.out.println("Can't save to db!");
+//        //FIXME
+//        try {
+////            beginTx();
+//            em.persist(pageEntity);
+////            commitTx();
+//        } catch (Exception e) {
+////            rollbackTx();
+//            System.out.println("Can't save to db!");
+//        }
+    }
+
+    public void truncateDatabase() throws Exception {
+        List<String> tableNames = new ArrayList<>();
+        Metamodel model = em.getMetamodel();
+
+        for (EntityType entity : model.getEntities()) {
+            Table classAnnotations = Class.forName(((EntityTypeImpl) entity).getTypeName()).getAnnotation(Table.class);
+            String tableName = classAnnotations.name();
+            String schemaName = classAnnotations.schema();
+            tableNames.add(schemaName + "." + tableName);
         }
+
+        em.getTransaction().begin();
+        em.flush();
+        for (String tableName : tableNames) {
+            em.createNativeQuery("TRUNCATE TABLE " + tableName + " CASCADE").executeUpdate();
+        }
+        em.getTransaction().commit();
     }
 
     private void beginTx() {

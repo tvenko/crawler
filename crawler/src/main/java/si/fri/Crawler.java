@@ -187,7 +187,7 @@ public class Crawler implements Runnable
 			}*/
 
 			// FIXME???
-//			saveToDB(document);
+			saveToDB(document);
 
 		} catch (IOException e) {
 			System.err.println("For '" + url + "': " + e.getMessage());

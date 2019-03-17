@@ -3,6 +3,7 @@ package si.fri;
 
 import si.fri.db.DatabaseManager;
 
+import javax.inject.Inject;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -25,6 +26,14 @@ public class Main {
 
         boolean logger = true;
         boolean loggerHTMLUnit = false;
+
+        // empty DB
+        DatabaseManager dbManager = new DatabaseManager();
+        try {
+            dbManager.truncateDatabase();
+        } catch (Exception e) {
+            System.out.println("Failed to truncate Database" + e.getMessage());
+        }
 
         frontier.add(new Frontier("http://evem.gov.si/", ""));
 
