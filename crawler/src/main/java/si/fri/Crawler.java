@@ -18,6 +18,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
@@ -77,6 +78,7 @@ public class Crawler implements Runnable
 	private final Map<String, Zgodovina> zgodovina;
 	private final Queue<Frontier> frontier;
 	private final DatabaseManager dbManager;
+	private final Map<String, ArrayList<String>> robotsDisallow;
 
 	private final boolean logger;
 	private final boolean loggerHTMLUnit;
@@ -84,7 +86,8 @@ public class Crawler implements Runnable
 	public Crawler(String url, ExecutorService executor,
 				   Map<String, Zgodovina> zgodovina,
 				   Queue<Frontier> frontier, DatabaseManager dbManager,
-				   boolean logger, boolean loggerHTMLUnit) {
+				   boolean logger, boolean loggerHTMLUnit,
+				   Map<String, ArrayList<String>> robotsDisallow) {
 		this.url = url;
 		this.executor = executor;
 		this.zgodovina = zgodovina;
@@ -92,11 +95,12 @@ public class Crawler implements Runnable
 		this.dbManager = dbManager;
 		this.logger = logger;
 		this.loggerHTMLUnit = loggerHTMLUnit;
+		this.robotsDisallow = robotsDisallow;
 	}
 
 	public void run() {
 		visit();
-		robots();
+//		robots();
 		if(logger)
 			System.out.println("Executor: " + url + " " + executor.toString());
 		if(logger)
@@ -111,7 +115,7 @@ public class Crawler implements Runnable
 					zgodovina.get(u).n++;
 				} else {
 					zgodovina.put(u, new Zgodovina(u, f.getUrlParent()));
-					executor.submit(new Crawler(u, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit));
+					executor.submit(new Crawler(u, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow));
 				}
 			}
 		}
@@ -136,17 +140,32 @@ public class Crawler implements Runnable
 
 	//TODO
 	public boolean shouldIVisit(String url) {
-		// 1. ali je stran sploh iz domene .gov.si
+
+		// get base URL
+		String baseUrl = "";
 		try {
-			if (!getBaseUrl(url).contains(BASE_URL_GOV)) {
-				return false;
-			}
+			baseUrl = getBaseUrl(url);
 		} catch (MalformedURLException e) {
 			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
 		}
 
+		// 1. ali je stran sploh iz domene .gov.si
+		if (!baseUrl.contains(BASE_URL_GOV)) {
+			return false;
+		}
 
-		// 3. ali robots dovoli dostop?
+		// 2. ali robots dovoli dostop?
+		if (!robotsDisallow.containsKey(baseUrl)) {
+			robots(baseUrl);
+		}
+		ArrayList<String> pages = robotsDisallow.get(baseUrl);
+		if (pages == null) {
+			return true;
+		}
+		else if (pages.contains(url)) {
+			return false;
+		}
+
 		return true;
 	}
 
@@ -240,8 +259,7 @@ public class Crawler implements Runnable
 	}
 
     // For each domain respect the robots.txt file if it exists.
-    public void robots() {
-		String baseUrl = "";
+    public void robots(String baseUrl) {
 
 		String robots = baseUrl + "/robots.txt";
 
@@ -264,16 +282,20 @@ public class Crawler implements Runnable
 					System.out.println("TODO: user-agent check here!");
 				}
 
+				ArrayList<String> robotsDisallowLinks = new ArrayList<>();
 				//TODO ??
 				// If a Disallow is defined, all the URLs that are disallow should be removed from the frontier
 				if (subLink.toLowerCase().contains("disallow")){
 					if(logger)
 						System.out.println("----disallow pages: "+ baseUrl + subLink.split("llow: ")[1]);
-					frontier.remove(baseUrl + subLink.split("llow: ")[1]);
+//					frontier.remove(baseUrl + subLink.split("llow: ")[1]);
+					robotsDisallowLinks.add(baseUrl + subLink.split("llow: "));
 				}
+				robotsDisallow.put(baseUrl, robotsDisallowLinks);
 
 			}
 		} catch (IOException e) {
+    		robotsDisallow.put(baseUrl, null);
 			System.err.println("For '" + baseUrl + "': " + e.getMessage());
 		}
     }
