@@ -100,40 +100,42 @@ public class Crawler implements Runnable
 	}
 
 	public void run() {
-		if(frontier.isEmpty())
-		{
-			try{
-				executor.wait(1000);
-				if(frontier.isEmpty())
-				{
-					try {
-						executor.awaitTermination(5, TimeUnit.SECONDS);
-						if (!executor.isTerminated()) {
-							System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
-							executor.shutdownNow();
-							System.out.println("--------------------Zgodovina ----------------");
-							for (String name: zgodovina.keySet()){
 
-								String key = name;
-								String value = zgodovina.get(name).urlParent;
-								System.out.println(key + " " + value);
+		synchronized(executor) { //https://stackoverflow.com/questions/1537116/illegalmonitorstateexception-on-wait-call
+			if (frontier.isEmpty()) {
+				try {
+					executor.wait(1000);
+					if (frontier.isEmpty()) {
+						try {
+							executor.awaitTermination(5, TimeUnit.SECONDS);
+							if (!executor.isTerminated()) {
+								System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
+								executor.shutdownNow();
+								System.out.println("--------------------Zgodovina ----------------");
+								for (String name : zgodovina.keySet()) {
+
+									String key = name;
+									String value = zgodovina.get(name).urlParent;
+									System.out.println(key + " " + value);
+								}
+								System.out.println("-------------------- Konec zgodovine ----------------");
+								System.out.println("Velikost zgodovine: " + zgodovina.size());
 							}
-							System.out.println("-------------------- Konec zgodovine ----------------");
-							System.out.println("Velikost zgodovine: " + zgodovina.size());
+						} catch (final InterruptedException e) {
+							System.err.println("Interrupted while waiting for executor shutdown." + e.getMessage());
+							Thread.currentThread().interrupt();
 						}
-					} catch (final InterruptedException e) {
-						System.err.println("Interrupted while waiting for executor shutdown.");
-						Thread.currentThread().interrupt();
 					}
+				} catch (IllegalMonitorStateException | InterruptedException e) {
+					System.err.println("Err while waiting." + e.getMessage());
 				}
-			} catch (Exception e) {
-				System.err.println("Err while waiting.");
-			}
 
+
+			}
 
 		}
 		visit();
-//		robots();
+		robots(url);
 		if(logger)
 			System.out.println("Executor: " + url + " " + executor.toString());
 		if(logger)
