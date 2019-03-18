@@ -37,7 +37,7 @@ public class Main {
 
         frontier.add(new Frontier("http://evem.gov.si/", ""));
 
-        zgodovina.put("http://evem.gov.si/", new Zgodovina("http://evem.gov.si/",""));
+//        zgodovina.put("http://evem.gov.si/", new Zgodovina("http://evem.gov.si/",""));
 
 //        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
 

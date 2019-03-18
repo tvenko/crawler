@@ -105,6 +105,8 @@ public class Crawler implements Runnable
 			synchronized(frontier) {
 				Frontier f = frontier.remove();
 				String u = f.getUrl();
+
+				// Ali smo stran že obiskali?
 				if (zgodovina.containsKey(u)) {
 					zgodovina.get(u).n++;
 				} else {
@@ -130,6 +132,22 @@ public class Crawler implements Runnable
 			System.err.println("For '" + baseUrl + "': " + e.getMessage() + " can't get base url");
 		}*/
 		return baseUrl;
+	}
+
+	//TODO
+	public boolean shouldIVisit(String url) {
+		// 1. ali je stran sploh iz domene .gov.si
+		try {
+			if (!getBaseUrl(url).contains(BASE_URL_GOV)) {
+				return false;
+			}
+		} catch (MalformedURLException e) {
+			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
+		}
+
+
+		// 3. ali robots dovoli dostop?
+		return true;
 	}
 
 	//TODO - popravi parsanje linkov
@@ -190,9 +208,13 @@ public class Crawler implements Runnable
 									!p.contains(".jspx") && !p.contains(".jsp") &&
 									!p.contains(".mp4") && !p.contains(".exe"))) {
 
-						if (getBaseUrl(p).contains(BASE_URL_GOV)) {
+						if (shouldIVisit(p)) {
 							frontier.add(new Frontier(p, url));
 						}
+
+						/*if (getBaseUrl(p).contains(BASE_URL_GOV)) {
+							frontier.add(new Frontier(p, url));
+						}*/
 					}
 				}
 			}
@@ -220,12 +242,6 @@ public class Crawler implements Runnable
     // For each domain respect the robots.txt file if it exists.
     public void robots() {
 		String baseUrl = "";
-		try {
-			baseUrl = getBaseUrl(url);
-		}
-		catch (MalformedURLException e) {
-			System.err.println("For '" + baseUrl + "': " + e.getMessage() + " can't get base url");
-		}
 
 		String robots = baseUrl + "/robots.txt";
 
