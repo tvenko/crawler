@@ -37,12 +37,12 @@ public class Main {
 
         frontier.add(new Frontier("http://evem.gov.si/", ""));
 
-        zgodovina.put("http://evem.gov.si/", new Zgodovina("http://evem.gov.si/",""));
+//        zgodovina.put("http://evem.gov.si/", new Zgodovina("http://evem.gov.si/",""));
 
 //        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
-
+//
 //        frontier.add(new Frontier("https://podatki.gov.si/", ""));
-
+//
 //        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
 
         executor.submit(new Crawler(frontier.remove().getUrl(), executor, zgodovina, frontier, new DatabaseManager(), logger, loggerHTMLUnit));
@@ -55,7 +55,7 @@ public class Main {
          *
          * trenutno dela nas crawler samo 30 sekund !!!!!
          */
-        try {
+        /*try {
             executor.awaitTermination(30, TimeUnit.SECONDS);
             if (!executor.isTerminated()) {
                 System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
@@ -74,7 +74,7 @@ public class Main {
             System.out.println(key + " " + value);
         }
         System.out.println("-------------------- Konec zgodovine ----------------");
-        System.out.println("Velikost zgodovine: " + zgodovina.size());
+        System.out.println("Velikost zgodovine: " + zgodovina.size());*/
     }
 }
 

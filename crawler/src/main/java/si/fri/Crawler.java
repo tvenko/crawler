@@ -21,6 +21,7 @@ import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -95,6 +96,38 @@ public class Crawler implements Runnable
 	}
 
 	public void run() {
+		if(frontier.isEmpty())
+		{
+			try{
+				executor.wait(1000);
+				if(frontier.isEmpty())
+				{
+					try {
+						executor.awaitTermination(5, TimeUnit.SECONDS);
+						if (!executor.isTerminated()) {
+							System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
+							executor.shutdownNow();
+							System.out.println("--------------------Zgodovina ----------------");
+							for (String name: zgodovina.keySet()){
+
+								String key = name;
+								String value = zgodovina.get(name).urlParent;
+								System.out.println(key + " " + value);
+							}
+							System.out.println("-------------------- Konec zgodovine ----------------");
+							System.out.println("Velikost zgodovine: " + zgodovina.size());
+						}
+					} catch (final InterruptedException e) {
+						System.err.println("Interrupted while waiting for executor shutdown.");
+						Thread.currentThread().interrupt();
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("Err while waiting.");
+			}
+
+
+		}
 		visit();
 		robots();
 		if(logger)
