@@ -101,10 +101,13 @@ public class Crawler implements Runnable
 
 	public void run() {
 
+		visit();
+//		robots(url);
+
 		synchronized(executor) { //https://stackoverflow.com/questions/1537116/illegalmonitorstateexception-on-wait-call
 			if (frontier.isEmpty()) {
 				try {
-					executor.wait(1000);
+					executor.wait(5000); // TODO: THIS NEEDS FURTHER INSPECTION
 					if (frontier.isEmpty()) {
 						try {
 							executor.awaitTermination(5, TimeUnit.SECONDS);
@@ -134,8 +137,7 @@ public class Crawler implements Runnable
 			}
 
 		}
-		visit();
-		robots(url);
+
 		if(logger)
 			System.out.println("Executor: " + url + " " + executor.toString());
 		if(logger)
@@ -249,12 +251,13 @@ public class Crawler implements Runnable
 			// img with src ending .jpg
 //			Elements jpgs = document.select("img[src$=.jpg]");
 
+
 			String p;
 			for (Element page : linksOnPage) {
 				p = page.attr("abs:href");
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
 					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx"))
-						continue;//documents.add(page);
+						continue;//documents.add(page); // TODO SHRANI V BAZO
 					else if ((p.contains("http://") || p.contains("https://")) &&
 							(!p.contains(".zip") && !p.contains(".xlsx") &&
 									!p.contains(".xls") && !p.contains(".pps") &&
@@ -265,10 +268,21 @@ public class Crawler implements Runnable
 						if (shouldIVisit(p)) {
 							frontier.add(new Frontier(p, url));
 						}
+					}
+				}
+			}
 
-						/*if (getBaseUrl(p).contains(BASE_URL_GOV)) {
+			// Parse the HTML to extract imgs with src ending (dot for mark)
+			Elements srcImgs = document.select("img[src$='.']");
+
+			for (Element page : srcImgs) {
+				p = page.attr("abs:src");
+				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
+					if (p.contains("http://") || p.contains("https://")) { //TODO, this needs work
+						// TODO: SAVE TO DB??
+						if (shouldIVisit(p)) {
 							frontier.add(new Frontier(p, url));
-						}*/
+						}
 					}
 				}
 			}
@@ -309,7 +323,7 @@ public class Crawler implements Runnable
 				if (subLink.toLowerCase().contains("sitemap")){
 					sitemap = subLink.split("map: ")[1];
 					//if(frontier.contains())
-					frontier.add(new Frontier(subLink.split("map: ")[1], baseUrl));
+					frontier.add(new Frontier(subLink.split("map: ")[1], baseUrl));  //TODO CHECK
 				}
 
 				// TODO USER AGENT CHECK HERE
@@ -318,8 +332,7 @@ public class Crawler implements Runnable
 				}
 
 				ArrayList<String> robotsDisallowLinks = new ArrayList<>();
-				//TODO ??
-				// If a Disallow is defined, all the URLs that are disallow should be removed from the frontier
+				//TODO CHECK
 				if (subLink.toLowerCase().contains("disallow")){
 					if(logger)
 						System.out.println("----disallow pages: "+ baseUrl + subLink.split("llow: ")[1]);
