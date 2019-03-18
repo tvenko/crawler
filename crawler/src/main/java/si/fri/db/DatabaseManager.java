@@ -24,6 +24,9 @@ public class DatabaseManager {
         pageEntity.setHtmlContent(htmlContent);
         pageEntity.setHttpStatusCode(httpStatusCode);
         pageEntity.setAccessedTime(timeAccessed);
+        PageTypeEntity pageType = getPageTypeEntityByCode(pageTypeCode);
+        if (pageType != null)
+            pageEntity.setPageTypeByPageTypeCode(pageType);
 
         em.getTransaction().begin();
         em.persist(pageEntity);
@@ -40,23 +43,25 @@ public class DatabaseManager {
 //        }
     }
 
-    public void truncateDatabase() throws Exception {
-        List<String> tableNames = new ArrayList<>();
-        Metamodel model = em.getMetamodel();
-
-        for (EntityType entity : model.getEntities()) {
-            Table classAnnotations = Class.forName(((EntityTypeImpl) entity).getTypeName()).getAnnotation(Table.class);
-            String tableName = classAnnotations.name();
-            String schemaName = classAnnotations.schema();
-            tableNames.add(schemaName + "." + tableName);
-        }
+    public void truncateDatabase() {
+        String schemaName = "crawldb";
+        String[] tableNames = {"image", "link", "page", "page_data", "site"};
 
         em.getTransaction().begin();
         em.flush();
         for (String tableName : tableNames) {
-            em.createNativeQuery("TRUNCATE TABLE " + tableName + " CASCADE").executeUpdate();
+            em.createNativeQuery("TRUNCATE TABLE " + schemaName + "." + tableName + " CASCADE").executeUpdate();
         }
         em.getTransaction().commit();
+    }
+
+    private PageTypeEntity getPageTypeEntityByCode(String code) {
+        List<PageTypeEntity> reuslts = em.createQuery("SELECT p FROM PageTypeEntity p WHERE p.code = :code")
+                .setParameter("code", code)
+                .getResultList();
+        if (!reuslts.isEmpty())
+            return reuslts.get(0);
+        return null;
     }
 
     private void beginTx() {

@@ -186,8 +186,7 @@ public class Crawler implements Runnable
 				images.add(s.attr("abs:src"));
 			}*/
 
-			// FIXME???
-			saveToDB(document);
+			saveToDB(document, response.getContentType(), response.getStatusCode());
 
 		} catch (IOException e) {
 			System.err.println("For '" + url + "': " + e.getMessage());
@@ -242,8 +241,12 @@ public class Crawler implements Runnable
 		}
     }
 
-    private void saveToDB(Document document) {
-		dbManager.addPageToDB("HTML", url, document.toString(), 200, new Timestamp(System.currentTimeMillis()));
+    private void saveToDB(Document document, String pageType, int httpStatusCode) {
+	    if (pageType.equals("text/html"))
+	        pageType = "HTML";
+	    else
+	        pageType = "BINARY";
+		dbManager.addPageToDB(pageType, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()));
 	}
 }
 
