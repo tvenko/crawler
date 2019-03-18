@@ -56,7 +56,7 @@ public class Main {
          * trenutno dela nas crawler samo 30 sekund !!!!!
          */
         try {
-            executor.awaitTermination(15, TimeUnit.SECONDS);
+            executor.awaitTermination(30, TimeUnit.SECONDS);
             if (!executor.isTerminated()) {
                 System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
                 executor.shutdownNow();

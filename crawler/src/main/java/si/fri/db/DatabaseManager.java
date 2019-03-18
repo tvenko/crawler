@@ -28,19 +28,14 @@ public class DatabaseManager {
         if (pageType != null)
             pageEntity.setPageTypeByPageTypeCode(pageType);
 
-        em.getTransaction().begin();
-        em.persist(pageEntity);
-        em.getTransaction().commit();
-
-//        //FIXME
-//        try {
-////            beginTx();
-//            em.persist(pageEntity);
-////            commitTx();
-//        } catch (Exception e) {
-////            rollbackTx();
-//            System.out.println("Can't save to db!");
-//        }
+        try {
+            beginTx();
+            em.persist(pageEntity);
+            commitTx();
+        } catch (Exception e) {
+            rollbackTx();
+            System.out.println("Can't save to db!");
+        }
     }
 
     public void truncateDatabase() {

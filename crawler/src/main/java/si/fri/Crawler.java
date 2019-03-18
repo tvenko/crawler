@@ -158,7 +158,7 @@ public class Crawler implements Runnable
 			WebResponse response = htmlPage.getWebResponse();
 			String content = response.getContentAsString();
 
-
+			// PARSE WITH JSOUP
 			Document document = Jsoup.parse(content);
 
 
