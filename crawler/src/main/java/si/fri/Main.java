@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Main {
 
-    public static final int NUMBER_OF_PARALLEL_THREADS = 5;
+    public static final int NUMBER_OF_PARALLEL_THREADS = 2;
 
     public static void main(String[] args) {
 
@@ -56,7 +56,7 @@ public class Main {
          * trenutno dela nas crawler samo 30 sekund !!!!!
          */
         try {
-            executor.awaitTermination(10, TimeUnit.SECONDS);
+            executor.awaitTermination(15, TimeUnit.SECONDS);
             if (!executor.isTerminated()) {
                 System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
                 executor.shutdownNow();
@@ -74,7 +74,7 @@ public class Main {
             System.out.println(key + " " + value);
         }
         System.out.println("-------------------- Konec zgodovine ----------------");
-        System.out.println(zgodovina.size());
+        System.out.println("Velikost zgodovine: " + zgodovina.size());
     }
 }
 

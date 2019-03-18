@@ -14,6 +14,8 @@ import si.fri.db.DatabaseManager;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.util.Map;
@@ -68,6 +70,7 @@ public class Crawler implements Runnable
 	 */
 
 	final static Pattern urlPattern = Pattern.compile("(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]");
+	public final static String BASE_URL_GOV = "gov.si";
 
 	private final String url;
 	private final ExecutorService executor;
@@ -95,7 +98,7 @@ public class Crawler implements Runnable
 		visit();
 		robots();
 		if(logger)
-			System.out.println(url + " " + executor.toString());
+			System.out.println("Executor: " + url + " " + executor.toString());
 		if(logger)
 			System.out.println("Velikost frontier-ja: " + frontier.size());
 		while (!frontier.isEmpty()){
@@ -110,6 +113,23 @@ public class Crawler implements Runnable
 				}
 			}
 		}
+	}
+
+	// Iz url dobimo BASE URL
+	public String getBaseUrl(String url) throws MalformedURLException {
+		String baseUrl = "";
+//		try {
+			//URI uri = new URI(url); // should we use this?? https://stackoverflow.com/questions/9607903/get-domain-name-from-given-url
+			URL base = new URL(url);
+
+			//String path = base.getFile().substring(0, xx.getFile().lastIndexOf('/'));
+			baseUrl = base.getProtocol() + "://" + base.getHost();
+		/*}
+		catch (Exception e)
+		{
+			System.err.println("For '" + baseUrl + "': " + e.getMessage() + " can't get base url");
+		}*/
+		return baseUrl;
 	}
 
 	//TODO - popravi parsanje linkov
@@ -168,8 +188,12 @@ public class Crawler implements Runnable
 									!p.contains(".xls") && !p.contains(".pps") &&
 									!p.contains(".jpg") && !p.contains(".png") &&
 									!p.contains(".jspx") && !p.contains(".jsp") &&
-									!p.contains(".mp4") && !p.contains(".exe")))
-						frontier.add(new Frontier(p, url));
+									!p.contains(".mp4") && !p.contains(".exe"))) {
+
+						if (getBaseUrl(p).contains(BASE_URL_GOV)) {
+							frontier.add(new Frontier(p, url));
+						}
+					}
 				}
 			}
 
@@ -195,19 +219,16 @@ public class Crawler implements Runnable
 
     // For each domain respect the robots.txt file if it exists.
     public void robots() {
-    	String baseUrl = "";
-    	// Iz url dobimo BASE URL
+		String baseUrl = "";
 		try {
-			URL base = new URL(url);
-			//String path = base.getFile().substring(0, xx.getFile().lastIndexOf('/'));
-			baseUrl = base.getProtocol() + "://" + base.getHost();
+			baseUrl = getBaseUrl(url);
 		}
-		catch (Exception e)
-		{
+		catch (MalformedURLException e) {
 			System.err.println("For '" + baseUrl + "': " + e.getMessage() + " can't get base url");
 		}
 
 		String robots = baseUrl + "/robots.txt";
+
     	try {
 			BufferedReader in = new BufferedReader(new InputStreamReader(new URL(robots).openStream()));
 			String subLink = null;
