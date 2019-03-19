@@ -27,4 +27,4 @@ docker run -d --name pg-database-crawler -e POSTGRES_USER=postgres -e POSTGRES_P
 \#3 mvn clean install
 ```
 
-(\#4 For viewing si.fri.si.fri.db content, connect to database with IDE (in IntelliJ: View->Tools view->Database, add database; in tab schemas choose only schema crawldb))
+(\#4 For viewing db content, connect to database with IDE (in IntelliJ: View->Tools view->Database, add database; in tab schemas choose only schema crawldb))
