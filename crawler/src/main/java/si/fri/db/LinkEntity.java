@@ -8,8 +8,8 @@ import javax.persistence.*;
 public class LinkEntity {
     private int fromPage;
     private int toPage;
-    private PageEntity pageByFromPage;
-    private PageEntity pageByToPage;
+//    private PageEntity pageByFromPage;
+//    private PageEntity pageByToPage;
 
     @Id
 //    @GeneratedValue(strategy=GenerationType.IDENTITY)
@@ -52,23 +52,23 @@ public class LinkEntity {
         return result;
     }
 
-    @ManyToOne
-    @JoinColumn(name = "from_page", referencedColumnName = "id", nullable = false)
-    public PageEntity getPageByFromPage() {
-        return pageByFromPage;
-    }
-
-    public void setPageByFromPage(PageEntity pageByFromPage) {
-        this.pageByFromPage = pageByFromPage;
-    }
-
-    @ManyToOne
-    @JoinColumn(name = "to_page", referencedColumnName = "id", nullable = false)
-    public PageEntity getPageByToPage() {
-        return pageByToPage;
-    }
-
-    public void setPageByToPage(PageEntity pageByToPage) {
-        this.pageByToPage = pageByToPage;
-    }
+//    @ManyToOne
+//    @JoinColumn(name = "from_page", referencedColumnName = "id", nullable = false)
+//    public PageEntity getPageByFromPage() {
+//        return pageByFromPage;
+//    }
+//
+//    public void setPageByFromPage(PageEntity pageByFromPage) {
+//        this.pageByFromPage = pageByFromPage;
+//    }
+//
+//    @ManyToOne
+//    @JoinColumn(name = "to_page", referencedColumnName = "id", nullable = false)
+//    public PageEntity getPageByToPage() {
+//        return pageByToPage;
+//    }
+//
+//    public void setPageByToPage(PageEntity pageByToPage) {
+//        this.pageByToPage = pageByToPage;
+//    }
 }

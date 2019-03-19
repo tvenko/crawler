@@ -44,7 +44,7 @@ public class Main {
 //
 //        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
 
-        executor.submit(new Crawler(frontier.remove().getUrl(), executor, zgodovina, frontier, new DatabaseManager(), logger, loggerHTMLUnit, robotsDisallow));
+        executor.submit(new Crawler(frontier.remove().getUrl(), "", executor, zgodovina, frontier, new DatabaseManager(), logger, loggerHTMLUnit, robotsDisallow));
 
         /**
          *

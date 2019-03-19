@@ -72,6 +72,7 @@ public class Crawler implements Runnable
 	public final static String BASE_URL_GOV = "gov.si";
 
 	private final String url;
+	private final String urlParent;
 	private final ExecutorService executor;
 	private final Map<String, Zgodovina> zgodovina;
 	private final Queue<Frontier> frontier;
@@ -81,12 +82,13 @@ public class Crawler implements Runnable
 	private final boolean logger;
 	private final boolean loggerHTMLUnit;
 
-	public Crawler(String url, ExecutorService executor,
+	public Crawler(String url, String urlParent, ExecutorService executor,
 				   Map<String, Zgodovina> zgodovina,
 				   Queue<Frontier> frontier, DatabaseManager dbManager,
 				   boolean logger, boolean loggerHTMLUnit,
 				   Map<String, ArrayList<String>> robotsDisallow) {
 		this.url = url;
+		this.urlParent = urlParent;
 		this.executor = executor;
 		this.zgodovina = zgodovina;
 		this.frontier = frontier;
@@ -142,14 +144,16 @@ public class Crawler implements Runnable
 		while (!frontier.isEmpty()){
 			synchronized(frontier) {
 				Frontier f = frontier.remove();
-				String u = f.getUrl();
+				String url = f.getUrl();
+				String urlParent = f.getUrlParent();
 
 				// Ali smo stran že obiskali?
-				if (zgodovina.containsKey(u)) {
-					zgodovina.get(u).n++;
+				if (zgodovina.containsKey(url)) {
+					zgodovina.get(url).n++;
 				} else {
-					zgodovina.put(u, new Zgodovina(u, f.getUrlParent()));
-					executor.submit(new Crawler(u, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow));
+//				    v zgodovino se niso strani dodajale dejansko takrat ko smo jih obiskali
+//					zgodovina.put(url, new Zgodovina(url, f.getUrlParent()));
+					executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow));
 				}
 			}
 		}
@@ -206,6 +210,7 @@ public class Crawler implements Runnable
 
 	//TODO - popravi parsanje linkov
 	public void visit() {
+        zgodovina.put(url, new Zgodovina(url, urlParent));
 		try {
 
 			// Fetch the HTML code
@@ -363,6 +368,7 @@ public class Crawler implements Runnable
 	        System.out.println(e.getMessage());
         }
 		dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()));
+        dbManager.addLinkToDB(urlParent, url);
 	}
 
 	private void saveSiteToDB(String domain, String robots, String sitemap) {

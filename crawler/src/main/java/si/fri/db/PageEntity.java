@@ -15,8 +15,8 @@ public class PageEntity {
     private Integer httpStatusCode;
     private Timestamp accessedTime;
     private Collection<ImageEntity> imagesById;
-    private Collection<LinkEntity> linksById;
-    private Collection<LinkEntity> linksById_0;
+//    private Collection<LinkEntity> linksById;
+//    private Collection<LinkEntity> linksById_0;
     private SiteEntity siteBySiteId;
     private PageTypeEntity pageTypeByPageTypeCode;
     private Collection<PageDataEntity> pageDataById;
@@ -132,23 +132,23 @@ public class PageEntity {
         this.imagesById = imagesById;
     }
 
-    @OneToMany(mappedBy = "pageByFromPage")
-    public Collection<LinkEntity> getLinksById() {
-        return linksById;
-    }
-
-    public void setLinksById(Collection<LinkEntity> linksById) {
-        this.linksById = linksById;
-    }
-
-    @OneToMany(mappedBy = "pageByToPage")
-    public Collection<LinkEntity> getLinksById_0() {
-        return linksById_0;
-    }
-
-    public void setLinksById_0(Collection<LinkEntity> linksById_0) {
-        this.linksById_0 = linksById_0;
-    }
+//    @OneToMany(mappedBy = "pageByFromPage")
+//    public Collection<LinkEntity> getLinksById() {
+//        return linksById;
+//    }
+//
+//    public void setLinksById(Collection<LinkEntity> linksById) {
+//        this.linksById = linksById;
+//    }
+//
+//    @OneToMany(mappedBy = "pageByToPage")
+//    public Collection<LinkEntity> getLinksById_0() {
+//        return linksById_0;
+//    }
+//
+//    public void setLinksById_0(Collection<LinkEntity> linksById_0) {
+//        this.linksById_0 = linksById_0;
+//    }
 
     @ManyToOne
     @JoinColumn(name = "site_id", referencedColumnName = "id")
