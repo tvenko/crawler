@@ -39,6 +39,26 @@ public class DatabaseManager {
         }
     }
 
+    public void addPageDataToDB(String url, byte[] data, String code) {
+        PageDataEntity pageDataEntity = new PageDataEntity();
+        pageDataEntity.setData(data);
+        PageEntity page = getPageByURL(url);
+        DataTypeEntity dataType = getDataType(code);
+        if (page != null && dataType != null) {
+            pageDataEntity.setPageByPageId(page);
+            pageDataEntity.setDataTypeByDataTypeCode(dataType);
+
+            try {
+                beginTx();
+                em.persist(pageDataEntity);
+                commitTx();
+            } catch (Exception e) {
+                rollbackTx();
+                System.out.println("Can't save to page_data db!");
+            }
+        }
+    }
+
     public void addSiteToDB(String domain, String robots, String siteMap) {
 //        check if site already exits in db
         if (getSiteByDomain(domain) == null) {
@@ -115,6 +135,23 @@ public class DatabaseManager {
             return results.get(0);
         return null;
     }
+
+    private DataTypeEntity getDataType(String code) {
+        List<DataTypeEntity> results = em.createQuery("SELECT dt FROM DataTypeEntity dt WHERE dt.code = :code")
+                .setParameter("code", code)
+                .getResultList();
+        if (!results.isEmpty())
+            return results.get(0);
+        return null;
+    }
+
+    private boolean hasLinksThisRecord(String fromUrl, String toUrl) {
+        List<LinkEntity> results = em.createQuery("SELECT l FROM LinkEntity l WHERE l.fromPage = :fromUrl AND l.toPage = :toUrl")
+                .setParameter("fromUrl", fromUrl)
+                .setParameter("toUrl", toUrl)
+                .getResultList();
+        return !results.isEmpty();
+     }
 
     private void beginTx() {
         if (!em.getTransaction().isActive())

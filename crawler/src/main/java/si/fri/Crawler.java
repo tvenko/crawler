@@ -13,6 +13,7 @@ import si.fri.db.DatabaseManager;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -211,35 +212,20 @@ public class Crawler implements Runnable
 	//TODO - popravi parsanje linkov
 	public void visit() {
         zgodovina.put(url, new Zgodovina(url, urlParent));
-		try {
 
-			// Fetch the HTML code
-			if(logger)
-				System.out.println("Trenutni url: " + url);
+		// Fetch the HTML code
+		if(logger)
+			System.out.println("Trenutni url: " + url);
 
-			// first run with headless browser, so we can run potential JS
-			WebClient webClient = new WebClient();
-			WebClientOptions options = webClient.getOptions();
-			options.setJavaScriptEnabled(true);
-			options.setRedirectEnabled(true);
-
-			// disable logging of htmlunit
-			if (!loggerHTMLUnit) {
-				LogFactory.getFactory().setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");
-
-				java.util.logging.Logger.getLogger("com.gargoylesoftware.htmlunit").setLevel(Level.OFF);
-				java.util.logging.Logger.getLogger("org.apache.commons.httpclient").setLevel(Level.OFF);
-			}
-
-			HtmlPage htmlPage = webClient.getPage(url);
-			WebResponse response = htmlPage.getWebResponse();
-			String content = response.getContentAsString();
+		WebResponse response = getWebResponse(url);
+		if (response != null) {
 
 			// PARSE WITH JSOUP
-			Document document = Jsoup.parse(content);
+			Document document = Jsoup.parse(response.getContentAsString());
 
+			savePageToDB(document, response.getContentType(), response.getStatusCode());
 
-			// WITHOUT JS
+// 			WITHOUT JS
 //			Document document = Jsoup.connect(url).get();
 
 			// Parse the HTML to extract links to other URLs
@@ -260,7 +246,7 @@ public class Crawler implements Runnable
 				p = page.attr("abs:href");
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
 					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx"))
-						continue;//documents.add(page); // TODO SHRANI V BAZO
+						savePageDataToDB(url, p);
 					else if ((p.contains("http://") || p.contains("https://")) &&
 							(!p.contains(".zip") && !p.contains(".xlsx") &&
 									!p.contains(".xls") && !p.contains(".pps") &&
@@ -292,21 +278,16 @@ public class Crawler implements Runnable
 
 
 			// For each extracted png image.
-			/*for (Element s : pngs) {
-				//System.out.println("SRC do slike (png): " + s.attr("abs:src"));
-				images.add(s.attr("abs:src"));
-			}
+		/*for (Element s : pngs) {
+			//System.out.println("SRC do slike (png): " + s.attr("abs:src"));
+			images.add(s.attr("abs:src"));
+		}
 
-			// For each extracted jpg image
-			for (Element s : jpgs) {
-				//System.out.println("SRC do slike (jpg): " + s.attr("abs:src"));
-				images.add(s.attr("abs:src"));
-			}*/
-
-			savePageToDB(document, response.getContentType(), response.getStatusCode());
-
-		} catch (IOException e) {
-			System.err.println("For '" + url + "': " + e.getMessage());
+		// For each extracted jpg image
+		for (Element s : jpgs) {
+			//System.out.println("SRC do slike (jpg): " + s.attr("abs:src"));
+			images.add(s.attr("abs:src"));
+		}*/
 		}
 	}
 
@@ -328,9 +309,9 @@ public class Crawler implements Runnable
 				// If a sitemap is defined, all the URLs that are defined within it, should be added to the frontier.
 				if (subLink.toLowerCase().contains("sitemap")){
 					sitemap = subLink.split("map: ")[1];
-					WebClient webClient = new WebClient();
-                    WebResponse response = webClient.getPage(sitemap).getWebResponse();
-                    siteMapContent = response.getContentAsString();
+                    WebResponse response = getWebResponse(sitemap);
+                    if (response != null)
+                    	siteMapContent = response.getContentAsString();
 					// TODO: parse sitemap content and add it to frontier
 				}
 
@@ -356,6 +337,30 @@ public class Crawler implements Runnable
     	return new String[]{robotsContent.toString(), siteMapContent};
     }
 
+    private WebResponse getWebResponse(String url) {
+		// first run with headless browser, so we can run potential JS
+		WebClient webClient = new WebClient();
+		WebClientOptions options = webClient.getOptions();
+		options.setJavaScriptEnabled(true);
+		options.setRedirectEnabled(true);
+
+		// disable logging of htmlunit
+		if (!loggerHTMLUnit) {
+			LogFactory.getFactory().setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");
+
+			java.util.logging.Logger.getLogger("com.gargoylesoftware.htmlunit").setLevel(Level.OFF);
+			java.util.logging.Logger.getLogger("org.apache.commons.httpclient").setLevel(Level.OFF);
+		}
+
+		try {
+			HtmlPage htmlPage = webClient.getPage(url);
+			return htmlPage.getWebResponse();
+		} catch (IOException e) {
+			System.err.println("For '" + url + "': " + e.getMessage());
+			return null;
+		}
+	}
+
     private void savePageToDB(Document document, String pageType, int httpStatusCode) {
 	    if (pageType.equals("text/html"))
 	        pageType = "HTML";
@@ -369,6 +374,30 @@ public class Crawler implements Runnable
         }
 		dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()));
         dbManager.addLinkToDB(urlParent, url);
+	}
+
+	private void savePageDataToDB(String urlParent, String url) {
+		try {
+			URL document = new URL(url);
+			InputStream stream = document.openStream();
+			byte[] data = new byte[stream.available()];
+			stream.read(data);
+			stream.close();
+			String code = "";
+			if (url.contains(".doc"))
+				code = "DOC";
+			else if (url.contains(".docx"))
+				code = "DOCX";
+			else if (url.contains(".pdf"))
+				code = "PDF";
+			else if (url.contains(".ppt"))
+				code = "PPT";
+			else if (url.contains(".pptx"))
+				code = "PPTX";
+			dbManager.addPageDataToDB(urlParent, data, code);
+		} catch (IOException e) {
+			System.out.println("page data reading ERROR: " + e.getMessage());
+		}
 	}
 
 	private void saveSiteToDB(String domain, String robots, String sitemap) {
