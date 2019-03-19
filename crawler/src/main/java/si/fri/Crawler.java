@@ -9,6 +9,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.netpreserve.urlcanon.Canonicalizer;
+import org.netpreserve.urlcanon.ParsedUrl;
 import si.fri.db.DatabaseManager;
 
 import java.io.BufferedReader;
@@ -22,8 +24,11 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
+
+import java.util.concurrent.Future;
 
 public class Crawler implements Runnable
 {
@@ -102,46 +107,17 @@ public class Crawler implements Runnable
 	public void run() {
 
 		visit();
-//		robots(url);
-
-//		synchronized(executor) { //https://stackoverflow.com/questions/1537116/illegalmonitorstateexception-on-wait-call
-//			if (frontier.isEmpty()) {
-//				try {
-//					executor.wait(5000); // TODO: THIS NEEDS FURTHER INSPECTION
-					if (frontier.isEmpty()) {
-//						try {
-//							executor.awaitTermination(5, TimeUnit.SECONDS);
-							if (!executor.isTerminated()) {
-								System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
-								executor.shutdownNow();
-								System.out.println("--------------------Zgodovina ----------------");
-								for (String name : zgodovina.keySet()) {
-
-									String key = name;
-									String value = zgodovina.get(name).urlParent;
-									System.out.println(key + " " + value);
-								}
-								System.out.println("-------------------- Konec zgodovine ----------------");
-								System.out.println("Velikost zgodovine: " + zgodovina.size());
-							}
-//						} catch (final InterruptedException e) {
-//							System.err.println("Interrupted while waiting for executor shutdown." + e.getMessage());
-//							Thread.currentThread().interrupt();
-//						}
-					}
-//				} catch (IllegalMonitorStateException | InterruptedException e) {
-//					System.err.println("Err while waiting." + e.getMessage());
-//				}
-
-
-//			}
-
-//		}
+		//robots(url);
 
 		if(logger)
 			System.out.println("Executor: " + url + " " + executor.toString());
 		if(logger)
 			System.out.println("Velikost frontier-ja: " + frontier.size());
+	}
+
+	public void init()
+	{
+		Future future = null;
 		while (!frontier.isEmpty()){
 			synchronized(frontier) {
 				Frontier f = frontier.remove();
@@ -152,28 +128,74 @@ public class Crawler implements Runnable
 				if (zgodovina.containsKey(url)) {
 					zgodovina.get(url).n++;
 				} else {
-//				    v zgodovino se niso strani dodajale dejansko takrat ko smo jih obiskali
-//					zgodovina.put(url, new Zgodovina(url, f.getUrlParent()));
-					executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow));
+					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow));
+				}
+
+			}
+		}
+
+		synchronized (frontier)
+		{
+			if(frontier.isEmpty())
+			{
+				try
+				{
+					Thread.sleep(10000);
+
+					while(!future.isDone()){}
+
+					if (frontier.isEmpty()) {
+						halt();
+					}
+					else
+						init();
+				}
+				catch (Exception e)
+				{
+					System.err.println("err while sleeping");
 				}
 			}
 		}
 	}
 
+	public void halt()
+	{
+		System.out.println("----" + frontier.size());
+		try {
+			executor.awaitTermination(10, TimeUnit.SECONDS);
+			if (!executor.isTerminated()) {
+				System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
+				executor.shutdownNow();
+			}
+			//printHistory();
+		} catch (final InterruptedException e) {
+			System.err.println("Interrupted while waiting for executor shutdown." + e.getMessage());
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	public void printHistory()
+	{
+		System.out.println("--------------------Zgodovina ----------------");
+		for (String name : zgodovina.keySet()) {
+
+			String key = name;
+			String value = zgodovina.get(name).urlParent;
+			System.out.println(key + " " + value);
+		}
+		System.out.println("-------------------- Konec zgodovine ----------------");
+		System.out.println("Velikost zgodovine: " + zgodovina.size());
+	}
+
 	// Iz url dobimo BASE URL
 	public String getBaseUrl(String url) throws MalformedURLException {
 		String baseUrl = "";
-//		try {
-			//URI uri = new URI(url); // should we use this?? https://stackoverflow.com/questions/9607903/get-domain-name-from-given-url
-			URL base = new URL(url);
 
-			//String path = base.getFile().substring(0, xx.getFile().lastIndexOf('/'));
-			baseUrl = base.getProtocol() + "://" + base.getHost();
-		/*}
-		catch (Exception e)
-		{
-			System.err.println("For '" + baseUrl + "': " + e.getMessage() + " can't get base url");
-		}*/
+		URL base = new URL(url);
+
+		//String path = base.getFile().substring(0, xx.getFile().lastIndexOf('/'));
+		baseUrl = base.getProtocol() + "://" + base.getHost();
+
 		return baseUrl;
 	}
 
@@ -225,25 +247,16 @@ public class Crawler implements Runnable
 
 			savePageToDB(document, response.getContentType(), response.getStatusCode());
 
-// 			WITHOUT JS
-//			Document document = Jsoup.connect(url).get();
-
-			// Parse the HTML to extract links to other URLs
 			Elements linksOnPage = document.select("a[href]");
 
-			// Javascript
-//			Elements scriptTags = document.getElementsByTag("script");
-
-			// img with src ending .png
-//			Elements pngs = document.select("img[src$=.png]");
-
-			// img with src ending .jpg
-//			Elements jpgs = document.select("img[src$=.jpg]");
-
-
 			String p;
+			ParsedUrl parsedUrl;
 			for (Element page : linksOnPage) {
-				p = page.attr("abs:href");
+				parsedUrl = ParsedUrl.parseUrl(page.attr("abs:href"));
+				// https://github.com/iipc/urlcanon
+				// Make sure that you work with canonicalized URLs only!
+				Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
+				p = parsedUrl.toString();
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
 					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx"))
 						savePageDataToDB(url, p);
@@ -270,24 +283,11 @@ public class Crawler implements Runnable
 					if (p.contains("http://") || p.contains("https://")) { //TODO, this needs work
 						// TODO: SAVE TO DB??
 						if (shouldIVisit(p)) {
-							frontier.add(new Frontier(p, url));
+							continue;//frontier.add(new Frontier(p, url));
 						}
 					}
 				}
 			}
-
-
-			// For each extracted png image.
-		/*for (Element s : pngs) {
-			//System.out.println("SRC do slike (png): " + s.attr("abs:src"));
-			images.add(s.attr("abs:src"));
-		}
-
-		// For each extracted jpg image
-		for (Element s : jpgs) {
-			//System.out.println("SRC do slike (jpg): " + s.attr("abs:src"));
-			images.add(s.attr("abs:src"));
-		}*/
 		}
 	}
 

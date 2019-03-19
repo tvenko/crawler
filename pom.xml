@@ -55,5 +55,11 @@
             <version>42.2.5</version>
         </dependency>
 
+        <!-- https://github.com/iipc/urlcanon -->
+        <dependency>
+            <groupId>org.netpreserve</groupId>
+            <artifactId>urlcanon</artifactId>
+            <version>0.1.1</version>
+        </dependency>
     </dependencies>
 </project>
