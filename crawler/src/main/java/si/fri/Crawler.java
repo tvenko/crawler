@@ -15,16 +15,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Crawler implements Runnable
@@ -193,7 +190,8 @@ public class Crawler implements Runnable
 
 		// 2. ali robots dovoli dostop?
 		if (!robotsDisallow.containsKey(baseUrl)) {
-			robots(baseUrl);
+			String[] robots = robots(baseUrl);
+			saveSiteToDB(baseUrl, robots[0], robots[1]);
 		}
 		ArrayList<String> pages = robotsDisallow.get(baseUrl);
 		if (pages == null) {
@@ -300,7 +298,7 @@ public class Crawler implements Runnable
 				images.add(s.attr("abs:src"));
 			}*/
 
-			saveToDB(document, response.getContentType(), response.getStatusCode());
+			savePageToDB(document, response.getContentType(), response.getStatusCode());
 
 		} catch (IOException e) {
 			System.err.println("For '" + url + "': " + e.getMessage());
@@ -308,22 +306,27 @@ public class Crawler implements Runnable
 	}
 
     // For each domain respect the robots.txt file if it exists.
-    public void robots(String baseUrl) {
+    public String[] robots(String baseUrl) {
 
 		String robots = baseUrl + "/robots.txt";
+        String siteMapContent = "";
+        StringBuilder robotsContent = new StringBuilder();
 
     	try {
 			BufferedReader in = new BufferedReader(new InputStreamReader(new URL(robots).openStream()));
-			String subLink = null;
-
+			String subLink;
 			String sitemap;
+            ArrayList<String> robotsDisallowLinks = new ArrayList<>();
+
 			while((subLink = in.readLine()) != null) {
 
 				// If a sitemap is defined, all the URLs that are defined within it, should be added to the frontier.
 				if (subLink.toLowerCase().contains("sitemap")){
 					sitemap = subLink.split("map: ")[1];
-					//if(frontier.contains())
-					frontier.add(new Frontier(subLink.split("map: ")[1], baseUrl));  //TODO CHECK
+					WebClient webClient = new WebClient();
+                    WebResponse response = webClient.getPage(sitemap).getWebResponse();
+                    siteMapContent = response.getContentAsString();
+					// TODO: parse sitemap content and add it to frontier
 				}
 
 				// TODO USER AGENT CHECK HERE
@@ -331,7 +334,6 @@ public class Crawler implements Runnable
 					System.out.println("TODO: user-agent check here!");
 				}
 
-				ArrayList<String> robotsDisallowLinks = new ArrayList<>();
 				//TODO CHECK
 				if (subLink.toLowerCase().contains("disallow")){
 					if(logger)
@@ -339,21 +341,32 @@ public class Crawler implements Runnable
 //					frontier.remove(baseUrl + subLink.split("llow: ")[1]);
 					robotsDisallowLinks.add(baseUrl + subLink.split("llow: "));
 				}
-				robotsDisallow.put(baseUrl, robotsDisallowLinks);
-
+				robotsContent.append(subLink).append("\n");
 			}
+            robotsDisallow.put(baseUrl, robotsDisallowLinks);
 		} catch (IOException e) {
     		robotsDisallow.put(baseUrl, null);
 			System.err.println("For '" + baseUrl + "': " + e.getMessage());
 		}
+    	return new String[]{robotsContent.toString(), siteMapContent};
     }
 
-    private void saveToDB(Document document, String pageType, int httpStatusCode) {
+    private void savePageToDB(Document document, String pageType, int httpStatusCode) {
 	    if (pageType.equals("text/html"))
 	        pageType = "HTML";
 	    else
 	        pageType = "BINARY";
-		dbManager.addPageToDB(pageType, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()));
+	    String baseUrl = "";
+	    try {
+            baseUrl = getBaseUrl(url);
+        } catch (MalformedURLException e) {
+	        System.out.println(e.getMessage());
+        }
+		dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()));
 	}
+
+	private void saveSiteToDB(String domain, String robots, String sitemap) {
+        dbManager.addSiteToDB(domain, robots, sitemap);
+    }
 }
 

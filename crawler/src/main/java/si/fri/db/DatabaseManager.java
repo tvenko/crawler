@@ -1,12 +1,7 @@
 package si.fri.db;
 
-import org.hibernate.metamodel.model.domain.internal.EntityTypeImpl;
-
 import javax.persistence.*;
-import javax.persistence.metamodel.EntityType;
-import javax.persistence.metamodel.Metamodel;
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseManager {
@@ -18,7 +13,7 @@ public class DatabaseManager {
         em = emf.createEntityManager();
     }
 
-    public void addPageToDB(String pageTypeCode, String url, String htmlContent, int httpStatusCode, Timestamp timeAccessed) {
+    public void addPageToDB(String pageTypeCode, String baseUrl, String url, String htmlContent, int httpStatusCode, Timestamp timeAccessed) {
         PageEntity pageEntity = new PageEntity();
         pageEntity.setUrl(url);
         pageEntity.setHtmlContent(htmlContent);
@@ -27,6 +22,9 @@ public class DatabaseManager {
         PageTypeEntity pageType = getPageTypeEntityByCode(pageTypeCode);
         if (pageType != null)
             pageEntity.setPageTypeByPageTypeCode(pageType);
+        SiteEntity site = getSiteByDomain(baseUrl);
+        if (site != null)
+            pageEntity.setSiteBySiteId(site);
 
         try {
             beginTx();
@@ -34,7 +32,23 @@ public class DatabaseManager {
             commitTx();
         } catch (Exception e) {
             rollbackTx();
-            System.out.println("Can't save to db!");
+            System.out.println("Can't save to page db!");
+        }
+    }
+
+    public void addSiteToDB(String domain, String robots, String siteMap) {
+        SiteEntity siteEntity = new SiteEntity();
+        siteEntity.setDomain(domain);
+        siteEntity.setRobotsContent(robots);
+        siteEntity.setSitemapContent(siteMap);
+
+        try {
+            beginTx();
+            em.persist(siteEntity);
+            commitTx();
+        } catch (Exception e) {
+            rollbackTx();
+            System.out.println("Can't save site to db!");
         }
     }
 
@@ -51,11 +65,20 @@ public class DatabaseManager {
     }
 
     private PageTypeEntity getPageTypeEntityByCode(String code) {
-        List<PageTypeEntity> reuslts = em.createQuery("SELECT p FROM PageTypeEntity p WHERE p.code = :code")
+        List<PageTypeEntity> results = em.createQuery("SELECT p FROM PageTypeEntity p WHERE p.code = :code")
                 .setParameter("code", code)
                 .getResultList();
-        if (!reuslts.isEmpty())
-            return reuslts.get(0);
+        if (!results.isEmpty())
+            return results.get(0);
+        return null;
+    }
+
+    private SiteEntity getSiteByDomain(String domain) {
+        List<SiteEntity> results =  em.createQuery("SELECT s FROM SiteEntity s WHERE s.domain = :domain")
+                .setParameter("domain", domain)
+                .getResultList();
+        if (!results.isEmpty())
+            return results.get(0);
         return null;
     }
 
