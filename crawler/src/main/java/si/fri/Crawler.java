@@ -152,7 +152,7 @@ public class Crawler implements Runnable
 				}
 				catch (Exception e)
 				{
-					System.err.println("err while sleeping");
+					System.err.println("err while sleeping because " + e.getMessage());
 				}
 			}
 		}
@@ -235,6 +235,14 @@ public class Crawler implements Runnable
 	public void visit() {
         zgodovina.put(url, new Zgodovina(url, urlParent));
 
+        try {
+			Thread.sleep(4000); // TODO - FIX WITH ROBOTS TIME
+		}
+        catch (Exception e) {
+        	System.out.println("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
+		}
+
+
 		// Fetch the HTML code
 		if(logger)
 			System.out.println("Trenutni url: " + url);
@@ -297,6 +305,7 @@ public class Crawler implements Runnable
 		String robots = baseUrl + "/robots.txt";
         String siteMapContent = "";
         StringBuilder robotsContent = new StringBuilder();
+        boolean respectRobots = true;
 
     	try {
 			BufferedReader in = new BufferedReader(new InputStreamReader(new URL(robots).openStream()));
@@ -315,21 +324,28 @@ public class Crawler implements Runnable
 					// TODO: parse sitemap content and add it to frontier
 				}
 
-				// TODO USER AGENT CHECK HERE
+				// TODO USER AGENT is this ok?
 				if (subLink.toLowerCase().contains("user-agent")){
-					System.out.println("TODO: user-agent check here!");
+					System.out.println("Useragent: " + subLink.split("llow: ")[1]);
+					if (!(subLink.split("llow: ")[1]).equals("User-agent: *")) {
+						respectRobots = false;
+						System.out.println("User-agent DOES NOT ALLOW us here!!!!");
+						break;
+					}
+					System.out.println("User-agent allows us here!");
 				}
 
 				//TODO CHECK
 				if (subLink.toLowerCase().contains("disallow")){
 					if(logger)
 						System.out.println("----disallow pages: "+ baseUrl + subLink.split("llow: ")[1]);
-//					frontier.remove(baseUrl + subLink.split("llow: ")[1]);
 					robotsDisallowLinks.add(baseUrl + subLink.split("llow: "));
 				}
 				robotsContent.append(subLink).append("\n");
 			}
-            robotsDisallow.put(baseUrl, robotsDisallowLinks);
+			if (respectRobots) {
+				robotsDisallow.put(baseUrl, robotsDisallowLinks);
+			}
 		} catch (IOException e) {
     		robotsDisallow.put(baseUrl, null);
 			System.err.println("For '" + baseUrl + "': " + e.getMessage());
