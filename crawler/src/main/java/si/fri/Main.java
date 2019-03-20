@@ -32,13 +32,13 @@ public class Main {
             System.out.println("Failed to truncate Database" + e.getMessage());
         }
 
-        frontier.add(new Frontier("http://evem.gov.si/", ""));
-
+//        frontier.add(new Frontier("http://evem.gov.si/", ""));
+//
 //        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
 //
 //        frontier.add(new Frontier("https://podatki.gov.si/", ""));
-//
-//        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
+
+        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
 
         Crawler crawler = new Crawler("", "",
                                         executor, zgodovina, frontier,

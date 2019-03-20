@@ -1,9 +1,11 @@
 package si.fri;
 
+import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebClientOptions;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.xml.XmlPage;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.logging.LogFactory;
 import org.jsoup.Jsoup;
@@ -128,7 +130,7 @@ public class Crawler implements Runnable
 				if (urlParent.equals("")) {
 					String baseUrl = getBaseUrl(url);
 					String[] robots = robots(baseUrl);
-					saveSiteToDB(baseUrl, robots[0], robots[1]);
+					saveSiteToDB(getDomain(url), robots[0], robots[1]);
 				}
 
 				// Ali smo stran že obiskali?
@@ -194,20 +196,6 @@ public class Crawler implements Runnable
 		System.out.println("Velikost zgodovine: " + zgodovina.size());
 	}
 
-	// Iz url dobimo BASE URL
-	public String getBaseUrl(String url) {
-		String baseUrl = "";
-
-		try {
-			URL base = new URL(url);
-			baseUrl = base.getHost();
-		} catch (MalformedURLException e) {
-			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
-		}
-
-		return baseUrl;
-	}
-
 	//TODO
 	public boolean shouldIVisit(String url) {
 
@@ -222,7 +210,7 @@ public class Crawler implements Runnable
 		// 2. ali robots dovoli dostop?
 		if (!robotsDisallow.containsKey(baseUrl)) {
 			String[] robots = robots(baseUrl);
-			saveSiteToDB(baseUrl, robots[0], robots[1]);
+			saveSiteToDB(getDomain(url), robots[0], robots[1]);
 		}
 		ArrayList<String> pages = robotsDisallow.get(baseUrl);
 		if (pages == null) {
@@ -271,7 +259,7 @@ public class Crawler implements Runnable
 				p = parsedUrl.toString();
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
 					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx")) {
-						if (originalSites.contains(getBaseUrl(url))) {
+						if (originalSites.contains(getDomain(url))) {
 							savePageDataToDB(url, p);
 						}
 					} else if ((p.contains("http://") || p.contains("https://")) &&
@@ -296,7 +284,7 @@ public class Crawler implements Runnable
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
 					if (!p.contains("http://") && !p.contains("https://"))
 						p = getBaseUrl(url) + "/" + p;
-					if (originalSites.contains(getBaseUrl(url)))
+					if (originalSites.contains(getDomain(url)))
 						saveImageToDB(url, p);
 				}
 			}
@@ -330,12 +318,13 @@ public class Crawler implements Runnable
 
 				// TODO USER AGENT is this ok?
 				if (subLink.toLowerCase().contains("user-agent")){
-					System.out.println("Useragent: " + subLink.split("llow: ")[1]);
-					if (!(subLink.split("llow: ")[1]).equals("User-agent: *")) {
-						respectRobots = false;
-						System.out.println("User-agent DOES NOT ALLOW us here!!!!");
-						break;
-					}
+					System.out.println("Useragent: " + subLink.split("llow: ")[0]);
+					// this is not correct, if user agent is *, we are allowed
+//					if (!(subLink.split("llow: ")[0]).equals("User-agent: *")) {
+//						respectRobots = false;
+//						System.out.println("User-agent DOES NOT ALLOW us here!!!!");
+//						break;
+//					}
 					System.out.println("User-agent allows us here!");
 				}
 
@@ -373,8 +362,8 @@ public class Crawler implements Runnable
 		}
 
 		try {
-			HtmlPage htmlPage = webClient.getPage(url);
-			return htmlPage.getWebResponse();
+			Page page = webClient.getPage(url);
+			return page.getWebResponse();
 		} catch (IOException e) {
 			System.err.println("For '" + url + "': " + e.getMessage());
 			return null;
@@ -386,7 +375,7 @@ public class Crawler implements Runnable
 	        pageType = "HTML";
 	    else
 	        pageType = "BINARY";
-	    String baseUrl = getBaseUrl(url);
+	    String baseUrl = getDomain(url);
 		dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()));
         dbManager.addLinkToDB(urlParent, url);
 	}
@@ -424,6 +413,33 @@ public class Crawler implements Runnable
 
 		}
 		return null;
+	}
+
+	// Iz url dobimo BASE URL
+	private String getBaseUrl(String url) {
+		String baseUrl = "";
+
+		try {
+			URL base = new URL(url);
+			baseUrl = base.getProtocol() + "://" + base.getHost();
+		} catch (MalformedURLException e) {
+			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
+		}
+
+		return baseUrl;
+	}
+
+	private String getDomain(String url) {
+		String domain = "";
+
+		try {
+			URL base = new URL(url);
+			domain = base.getHost();
+		} catch (MalformedURLException e) {
+			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
+		}
+
+		return domain;
 	}
 }
 
