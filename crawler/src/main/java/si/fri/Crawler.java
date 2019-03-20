@@ -107,7 +107,6 @@ public class Crawler implements Runnable
 	public void run() {
 
 		visit();
-		//robots(url);
 
 		if(logger)
 			System.out.println("Executor: " + url + " " + executor.toString());
@@ -123,6 +122,11 @@ public class Crawler implements Runnable
 				Frontier f = frontier.remove();
 				String url = f.getUrl();
 				String urlParent = f.getUrlParent();
+				if (urlParent.equals("")) {
+					String baseUrl = getBaseUrl(url);
+					String[] robots = robots(baseUrl);
+					saveSiteToDB(baseUrl, robots[0], robots[1]);
+				}
 
 				// Ali smo stran že obiskali?
 				if (zgodovina.containsKey(url)) {
@@ -188,13 +192,15 @@ public class Crawler implements Runnable
 	}
 
 	// Iz url dobimo BASE URL
-	public String getBaseUrl(String url) throws MalformedURLException {
+	public String getBaseUrl(String url) {
 		String baseUrl = "";
 
-		URL base = new URL(url);
-
-		//String path = base.getFile().substring(0, xx.getFile().lastIndexOf('/'));
-		baseUrl = base.getProtocol() + "://" + base.getHost();
+		try {
+			URL base = new URL(url);
+			baseUrl = base.getHost();
+		} catch (MalformedURLException e) {
+			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
+		}
 
 		return baseUrl;
 	}
@@ -203,12 +209,7 @@ public class Crawler implements Runnable
 	public boolean shouldIVisit(String url) {
 
 		// get base URL
-		String baseUrl = "";
-		try {
-			baseUrl = getBaseUrl(url);
-		} catch (MalformedURLException e) {
-			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
-		}
+		String baseUrl = getBaseUrl(url);
 
 		// 1. ali je stran sploh iz domene .gov.si
 		if (!baseUrl.contains(BASE_URL_GOV)) {
@@ -382,12 +383,7 @@ public class Crawler implements Runnable
 	        pageType = "HTML";
 	    else
 	        pageType = "BINARY";
-	    String baseUrl = "";
-	    try {
-            baseUrl = getBaseUrl(url);
-        } catch (MalformedURLException e) {
-	        System.out.println(e.getMessage());
-        }
+	    String baseUrl = getBaseUrl(url);
 		dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()));
         dbManager.addLinkToDB(urlParent, url);
 	}

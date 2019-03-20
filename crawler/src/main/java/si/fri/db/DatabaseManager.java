@@ -79,20 +79,22 @@ public class DatabaseManager {
     }
 
     public void addLinkToDB(String fromUrl, String toUrl) {
-        LinkEntity linkEntity = new LinkEntity();
-        PageEntity fromPage = getPageByURL(fromUrl);
-        PageEntity toPage = getPageByURL(toUrl);
-        if (fromPage != null && toPage != null) {
-            linkEntity.setToPage(toPage.getId());
-            linkEntity.setFromPage(fromPage.getId());
+        if (!hasLinksThisRecord(fromUrl, toUrl)) {
+            LinkEntity linkEntity = new LinkEntity();
+            PageEntity fromPage = getPageByURL(fromUrl);
+            PageEntity toPage = getPageByURL(toUrl);
+            if (fromPage != null && toPage != null) {
+                linkEntity.setToPage(toPage.getId());
+                linkEntity.setFromPage(fromPage.getId());
 
-            try {
-                beginTx();
-                em.persist(linkEntity);
-                commitTx();
-            } catch (Exception e) {
-                rollbackTx();
-                System.out.println("Can't save link to db!");
+                try {
+                    beginTx();
+                    em.persist(linkEntity);
+                    commitTx();
+                } catch (Exception e) {
+                    rollbackTx();
+                    System.out.println("Can't save link to db!");
+                }
             }
         }
     }
@@ -110,47 +112,62 @@ public class DatabaseManager {
     }
 
     private PageTypeEntity getPageTypeEntityByCode(String code) {
-        List<PageTypeEntity> results = em.createQuery("SELECT p FROM PageTypeEntity p WHERE p.code = :code")
-                .setParameter("code", code)
-                .getResultList();
-        if (!results.isEmpty())
-            return results.get(0);
-        return null;
+        try {
+            return (PageTypeEntity)em.createQuery("SELECT p FROM PageTypeEntity p WHERE p.code = :code")
+                    .setParameter("code", code)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
     }
 
     private SiteEntity getSiteByDomain(String domain) {
-        List<SiteEntity> results =  em.createQuery("SELECT s FROM SiteEntity s WHERE s.domain = :domain")
-                .setParameter("domain", domain)
-                .getResultList();
-        if (!results.isEmpty())
-            return results.get(0);
-        return null;
+        try {
+            return (SiteEntity)em.createQuery("SELECT s FROM SiteEntity s WHERE s.domain = :domain")
+                    .setParameter("domain", domain)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
     }
 
     private PageEntity getPageByURL(String url) {
-        List<PageEntity> results = em.createQuery("SELECT p FROM PageEntity p WHERE p.url = :url")
-                .setParameter("url", url)
-                .getResultList();
-        if (!results.isEmpty())
-            return results.get(0);
-        return null;
+        try {
+            return (PageEntity) em.createQuery("SELECT p FROM PageEntity p WHERE p.url = :url")
+                    .setParameter("url", url)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
     }
 
     private DataTypeEntity getDataType(String code) {
-        List<DataTypeEntity> results = em.createQuery("SELECT dt FROM DataTypeEntity dt WHERE dt.code = :code")
-                .setParameter("code", code)
-                .getResultList();
-        if (!results.isEmpty())
-            return results.get(0);
-        return null;
+        try {
+            return (DataTypeEntity)em.createQuery("SELECT dt FROM DataTypeEntity dt WHERE dt.code = :code")
+                    .setParameter("code", code)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
     }
 
     private boolean hasLinksThisRecord(String fromUrl, String toUrl) {
-        List<LinkEntity> results = em.createQuery("SELECT l FROM LinkEntity l WHERE l.fromPage = :fromUrl AND l.toPage = :toUrl")
-                .setParameter("fromUrl", fromUrl)
-                .setParameter("toUrl", toUrl)
-                .getResultList();
-        return !results.isEmpty();
+        try {
+            PageEntity fromPageId = (PageEntity) em.createQuery("SELECT p FROM PageEntity p WHERE p.url = :url")
+                    .setParameter("url", fromUrl).getSingleResult();
+            PageEntity toPageId = (PageEntity) em.createQuery("SELECT p FROM PageEntity p WHERE p.url = :url")
+                    .setParameter("url", toUrl).getSingleResult();
+            if (fromPageId != null && toPageId != null) {
+                LinkEntity result = (LinkEntity) em.createQuery("SELECT l FROM LinkEntity l WHERE l.fromPage = :fromUrl AND l.toPage = :toUrl")
+                        .setParameter("fromUrl", fromPageId.getId())
+                        .setParameter("toUrl", toPageId.getId())
+                        .getSingleResult();
+                return result != null;
+            }
+            return false;
+        } catch (NoResultException e) {
+            return false;
+        }
      }
 
     private void beginTx() {
