@@ -99,6 +99,29 @@ public class DatabaseManager {
         }
     }
 
+    public void addImageToDB(String url, String fileName, String contentType, byte[] data, Timestamp timeAccessed) {
+        ImageEntity imageEntity = new ImageEntity();
+        PageEntity page = getPageByURL(url);
+        if (page != null && !imageExistsInDB(page.getId(), fileName)) {
+            imageEntity.setPageByPageId(page);
+            imageEntity.setContentType(contentType);
+            imageEntity.setData(data);
+            imageEntity.setAccessedTime(timeAccessed);
+            imageEntity.setFilename(fileName);
+
+            try {
+                beginTx();
+                em.persist(imageEntity);
+                commitTx();
+            } catch (Exception e) {
+                rollbackTx();
+                System.out.println("Can't save image to db!");
+            }
+        } else {
+            System.out.println("IMAGE NOT ADDED TO DB: " + page.getId() + " : " + fileName);
+        }
+    }
+
     public void truncateDatabase() {
         String schemaName = "crawldb";
         String[] tableNames = {"image", "link", "page", "page_data", "site"};
@@ -168,7 +191,15 @@ public class DatabaseManager {
         } catch (NoResultException e) {
             return false;
         }
-     }
+    }
+
+    private boolean imageExistsInDB(int pageId, String imageName) {
+        List results = em.createQuery("SELECT i FROM ImageEntity i WHERE i.pageId = :pageId AND i.filename = :imageName")
+                .setParameter("pageId", pageId)
+                .setParameter("imageName", imageName)
+                .getResultList();
+        return !results.isEmpty();
+    }
 
     private void beginTx() {
         if (!em.getTransaction().isActive())

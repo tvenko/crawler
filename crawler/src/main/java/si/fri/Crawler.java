@@ -4,6 +4,7 @@ import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebClientOptions;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.logging.LogFactory;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -284,17 +285,14 @@ public class Crawler implements Runnable
 			}
 
 			// Parse the HTML to extract imgs with src ending (dot for mark)
-			Elements srcImgs = document.select("img[src$='.']");
+			Elements srcImgs = document.select("img[src$='']");
 
 			for (Element page : srcImgs) {
-				p = page.attr("abs:src");
+				p = page.attr("src");
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
-					if (p.contains("http://") || p.contains("https://")) { //TODO, this needs work
-						// TODO: SAVE TO DB??
-						if (shouldIVisit(p)) {
-							continue;//frontier.add(new Frontier(p, url));
-						}
-					}
+					if (!p.contains("http://") && !p.contains("https://"))
+						p = getBaseUrl(url) + "/" + p;
+					saveImageToDB(url, p);
 				}
 			}
 		}
@@ -389,31 +387,38 @@ public class Crawler implements Runnable
 	}
 
 	private void savePageDataToDB(String urlParent, String url) {
-		try {
-			URL document = new URL(url);
-			InputStream stream = document.openStream();
-			byte[] data = new byte[stream.available()];
-			stream.read(data);
-			stream.close();
-			String code = "";
-			if (url.contains(".doc"))
-				code = "DOC";
-			else if (url.contains(".docx"))
-				code = "DOCX";
-			else if (url.contains(".pdf"))
-				code = "PDF";
-			else if (url.contains(".ppt"))
-				code = "PPT";
-			else if (url.contains(".pptx"))
-				code = "PPTX";
+		byte[] data = getBinaryDocument(url);
+		if (data != null) {
+			String code = FilenameUtils.getExtension(url).toUpperCase();
 			dbManager.addPageDataToDB(urlParent, data, code);
-		} catch (IOException e) {
-			System.out.println("page data reading ERROR: " + e.getMessage());
+		}
+	}
+
+	private void saveImageToDB(String urlParent, String url) {
+		byte[] data = getBinaryDocument(url);
+		if (data != null) {
+			String fileName = FilenameUtils.getName(url);
+			String contentType = FilenameUtils.getExtension(url);
+			dbManager.addImageToDB(urlParent, fileName, contentType, data, new Timestamp(System.currentTimeMillis()));
 		}
 	}
 
 	private void saveSiteToDB(String domain, String robots, String sitemap) {
         dbManager.addSiteToDB(domain, robots, sitemap);
     }
+
+    private byte[] getBinaryDocument(String url) {
+		try {
+			URL document = new URL(url);
+			InputStream stream = document.openStream();
+			byte[] data = new byte[stream.available()];
+			stream.read(data);
+			stream.close();
+			return data;
+		} catch (IOException e) {
+
+		}
+		return null;
+	}
 }
 
