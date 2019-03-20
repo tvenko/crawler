@@ -9,7 +9,7 @@ import java.util.concurrent.Executors;
 
 public class Main {
 
-    public static final int NUMBER_OF_PARALLEL_THREADS = 2;
+    public static final int NUMBER_OF_PARALLEL_THREADS = 4;
 
     public static void main(String[] args) {
 

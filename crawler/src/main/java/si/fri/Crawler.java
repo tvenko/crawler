@@ -22,6 +22,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
@@ -85,6 +86,8 @@ public class Crawler implements Runnable
 	private final Queue<Frontier> frontier;
 	private final DatabaseManager dbManager;
 	private final Map<String, ArrayList<String>> robotsDisallow;
+	private final List<String> originalSites = List.of("evem.gov.si", "www.evem.gov.si", "e-uprava.gov.si", "www.e-uprava.gov.si",
+                                            "podatki.gov.si", "www.podatki.gov.si", "www.e-prostor.gov.si", "e-prostor.gov.si/");
 
 	private final boolean logger;
 	private final boolean loggerHTMLUnit;
@@ -106,7 +109,6 @@ public class Crawler implements Runnable
 	}
 
 	public void run() {
-
 		visit();
 
 		if(logger)
@@ -268,9 +270,11 @@ public class Crawler implements Runnable
 				Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
 				p = parsedUrl.toString();
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
-					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx"))
-						savePageDataToDB(url, p);
-					else if ((p.contains("http://") || p.contains("https://")) &&
+					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx")) {
+						if (originalSites.contains(getBaseUrl(url))) {
+							savePageDataToDB(url, p);
+						}
+					} else if ((p.contains("http://") || p.contains("https://")) &&
 							(!p.contains(".zip") && !p.contains(".xlsx") &&
 									!p.contains(".xls") && !p.contains(".pps") &&
 									!p.contains(".jpg") && !p.contains(".png") &&
@@ -292,7 +296,8 @@ public class Crawler implements Runnable
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
 					if (!p.contains("http://") && !p.contains("https://"))
 						p = getBaseUrl(url) + "/" + p;
-					saveImageToDB(url, p);
+					if (originalSites.contains(getBaseUrl(url)))
+						saveImageToDB(url, p);
 				}
 			}
 		}
