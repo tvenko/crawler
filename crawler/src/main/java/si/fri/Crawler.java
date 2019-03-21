@@ -234,7 +234,14 @@ public class Crawler implements Runnable
         zgodovina.put(url, new Zgodovina(url, urlParent));
 
         try {
-			Thread.sleep(4000); // TODO - FIX WITH ROBOTS TIME
+			int sleepTime = DEFAULT_CRAWL_DELAY;
+			for (String baseSite : robotsDelay.keySet()) {
+				if (url.contains(baseSite)) {
+					sleepTime = robotsDelay.get(baseSite) * 1000;
+					break;
+				}
+			}
+			Thread.sleep(sleepTime);
 		}
         catch (Exception e) {
         	System.out.println("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
