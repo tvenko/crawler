@@ -15,6 +15,7 @@ import org.jsoup.select.Elements;
 import org.netpreserve.urlcanon.Canonicalizer;
 import org.netpreserve.urlcanon.ParsedUrl;
 import si.fri.db.DatabaseManager;
+import si.fri.db.PageEntity;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -22,6 +23,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -87,6 +90,7 @@ public class Crawler implements Runnable
 	private final Map<String, ArrayList<String>> robotsDisallow;
 	private final Map<String, Integer> robotsDelay;
 	private final List<String> originalSites;
+	Map<String, String> hashCode;
 
 	private final boolean logger;
 	private final boolean loggerHTMLUnit;
@@ -98,7 +102,8 @@ public class Crawler implements Runnable
 				   Queue<Frontier> frontier, DatabaseManager dbManager,
 				   boolean logger, boolean loggerHTMLUnit,
 				   Map<String, ArrayList<String>> robotsDisallow,
-				   Map<String, Integer> robotsDelay, List<String> originalSites) {
+				   Map<String, Integer> robotsDelay, List<String> originalSites,
+				   Map<String, String> hashCode) {
 		this.url = url;
 		this.urlParent = urlParent;
 		this.executor = executor;
@@ -110,6 +115,7 @@ public class Crawler implements Runnable
 		this.robotsDisallow = robotsDisallow;
 		this.robotsDelay = robotsDelay;
 		this.originalSites = originalSites;
+		this.hashCode = hashCode;
 	}
 
 	public void run() {
@@ -139,7 +145,8 @@ public class Crawler implements Runnable
 				if (zgodovina.containsKey(url)) {
 					zgodovina.get(url).n++;
 				} else {
-					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow, robotsDelay, originalSites));
+					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger,
+							loggerHTMLUnit, robotsDisallow, robotsDelay, originalSites, hashCode));
 				}
 
 			}
@@ -437,13 +444,32 @@ public class Crawler implements Runnable
 	}
 
     private void savePageToDB(Document document, String pageType, int httpStatusCode) {
-	    if (pageType.equals("text/html"))
-	        pageType = "HTML";
-	    else
-	        pageType = "BINARY";
-	    String baseUrl = getDomain(url);
-		dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()));
-        dbManager.addLinkToDB(urlParent, url);
+
+		//hash
+		String hash = generateHash(document.toString());
+
+		//PageEntity p = dbManager.duplicateExistsInDB(hash);
+
+		if (hashCode.containsKey(hash)) {
+			pageType = "DUPLICATE";
+
+			String baseUrl = getDomain(url);
+
+			dbManager.addPageToDB(pageType, baseUrl, url, "", httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
+			dbManager.addLinkToDB(hashCode.get(hash), url);
+
+		} else {
+	    	if (pageType.equals("text/html"))
+				pageType = "HTML";
+			else
+				pageType = "BINARY";
+
+			hashCode.put(hash, url);
+
+			String baseUrl = getDomain(url);
+			dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
+			dbManager.addLinkToDB(urlParent, url);
+		}
 	}
 
 	private void savePageDataToDB(String urlParent, String url) {
@@ -506,6 +532,35 @@ public class Crawler implements Runnable
 		}
 
 		return domain;
+	}
+
+	public String generateHash(String text)
+	{
+
+		String generatedText = null;
+		try {
+			// https://howtodoinjava.com/security/how-to-generate-secure-password-hash-md5-sha-pbkdf2-bcrypt-examples/
+			// Create MessageDigest instance for MD5
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			//Add text bytes to digest
+			md.update(text.getBytes());
+			//Get the hash's bytes
+			byte[] bytes = md.digest();
+			//This bytes[] has bytes in decimal format;
+			//Convert it to hexadecimal format
+			StringBuilder sb = new StringBuilder();
+			for(int i=0; i< bytes.length ;i++)
+			{
+				sb.append(Integer.toString((bytes[i] & 0xff) + 0x100, 16).substring(1));
+			}
+			//Get complete hashed text in hex format
+			generatedText = sb.toString();
+		}
+		catch (NoSuchAlgorithmException e)
+		{
+			e.printStackTrace();
+		}
+		return generatedText;
 	}
 }
 

@@ -21,6 +21,8 @@ public class PageEntity {
     private PageTypeEntity pageTypeByPageTypeCode;
     private Collection<PageDataEntity> pageDataById;
 
+    private String hash;
+
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -108,6 +110,8 @@ public class PageEntity {
             return false;
         if (accessedTime != null ? !accessedTime.equals(that.accessedTime) : that.accessedTime != null) return false;
 
+        if (hash != null ? !hash.equals(that.hash) : that.hash != null) return false;
+
         return true;
     }
 
@@ -120,6 +124,7 @@ public class PageEntity {
         result = 31 * result + (htmlContent != null ? htmlContent.hashCode() : 0);
         result = 31 * result + (httpStatusCode != null ? httpStatusCode.hashCode() : 0);
         result = 31 * result + (accessedTime != null ? accessedTime.hashCode() : 0);
+        result = 31 * result + (hash != null ? hash.hashCode() : 0);
         return result;
     }
 
@@ -177,5 +182,16 @@ public class PageEntity {
 
     public void setPageDataById(Collection<PageDataEntity> pageDataById) {
         this.pageDataById = pageDataById;
+    }
+
+
+    @Basic
+    @Column(name = "hash", nullable = true)
+    public String getHash() {
+        return hash;
+    }
+
+    public void setHash(String hash) {
+        this.hash = hash;
     }
 }

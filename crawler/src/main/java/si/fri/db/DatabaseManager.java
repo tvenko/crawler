@@ -13,7 +13,7 @@ public class DatabaseManager {
         em = emf.createEntityManager();
     }
 
-    public void addPageToDB(String pageTypeCode, String baseUrl, String url, String htmlContent, int httpStatusCode, Timestamp timeAccessed) {
+    public void addPageToDB(String pageTypeCode, String baseUrl, String url, String htmlContent, int httpStatusCode, Timestamp timeAccessed, String hash) {
         // check if page already exists in db
         if (getPageByURL(url) == null) {
             PageEntity pageEntity = new PageEntity();
@@ -21,6 +21,10 @@ public class DatabaseManager {
             pageEntity.setHtmlContent(htmlContent);
             pageEntity.setHttpStatusCode(httpStatusCode);
             pageEntity.setAccessedTime(timeAccessed);
+
+            //hash
+            pageEntity.setHash(hash);
+
             PageTypeEntity pageType = getPageTypeEntityByCode(pageTypeCode);
             if (pageType != null)
                 pageEntity.setPageTypeByPageTypeCode(pageType);
@@ -168,6 +172,16 @@ public class DatabaseManager {
         try {
             return (DataTypeEntity)em.createQuery("SELECT dt FROM DataTypeEntity dt WHERE dt.code = :code")
                     .setParameter("code", code)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    public PageEntity duplicateExistsInDB(String hash) {
+        try {
+            return (PageEntity)em.createQuery("SELECT p FROM PageEntity p WHERE p.hash = :hash")
+                    .setParameter("hash", hash)
                     .getSingleResult();
         } catch (NoResultException e) {
             return null;

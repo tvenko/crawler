@@ -9,7 +9,7 @@ import java.util.concurrent.Executors;
 
 public class Main {
 
-    public static final int NUMBER_OF_PARALLEL_THREADS = 4;
+    public static final int NUMBER_OF_PARALLEL_THREADS = 1;
 
     public static void main(String[] args) {
 
@@ -22,12 +22,14 @@ public class Main {
         Map<String, ArrayList<String>> robotsDisallow = new LinkedHashMap<>();
         Map<String, Integer> robotsDelay = new LinkedHashMap<>();
 
+        Map<String, String> hashCode = new HashMap<String, String>();
+
         List<String> originalSites;
         originalSites = Arrays.asList("evem.gov.si", "www.evem.gov.si", "e-uprava.gov.si", "www.e-uprava.gov.si",
                 "podatki.gov.si", "www.podatki.gov.si", "www.e-prostor.gov.si", "e-prostor.gov.si/");
 
 
-        boolean logger = true;
+        boolean logger = false;
         boolean loggerHTMLUnit = false;
 
         // empty DB
@@ -50,12 +52,12 @@ public class Main {
 
         frontier.add(new Frontier("http://www.gu.gov.si/", ""));
 
-
         Crawler crawler = new Crawler("", "",
                                         executor, zgodovina, frontier,
                                         new DatabaseManager(), logger,
                                         loggerHTMLUnit, robotsDisallow,
-                                        robotsDelay, originalSites);
+                                        robotsDelay, originalSites,
+                                        hashCode);
         crawler.init();
     }
 }
