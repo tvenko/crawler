@@ -23,10 +23,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -88,17 +85,20 @@ public class Crawler implements Runnable
 	private final Queue<Frontier> frontier;
 	private final DatabaseManager dbManager;
 	private final Map<String, ArrayList<String>> robotsDisallow;
+	private final Map<String, Integer> robotsDelay;
 	private final List<String> originalSites;
 
 	private final boolean logger;
 	private final boolean loggerHTMLUnit;
+	private String useragent;
+	private static final int DEFAULT_CRAWL_DELAY = 4;
 
 	public Crawler(String url, String urlParent, ExecutorService executor,
 				   Map<String, Zgodovina> zgodovina,
 				   Queue<Frontier> frontier, DatabaseManager dbManager,
 				   boolean logger, boolean loggerHTMLUnit,
 				   Map<String, ArrayList<String>> robotsDisallow,
-				   List<String> originalSites) {
+				   Map<String, Integer> robotsDelay, List<String> originalSites) {
 		this.url = url;
 		this.urlParent = urlParent;
 		this.executor = executor;
@@ -108,6 +108,7 @@ public class Crawler implements Runnable
 		this.logger = logger;
 		this.loggerHTMLUnit = loggerHTMLUnit;
 		this.robotsDisallow = robotsDisallow;
+		this.robotsDelay = robotsDelay;
 		this.originalSites = originalSites;
 	}
 
@@ -138,7 +139,7 @@ public class Crawler implements Runnable
 				if (zgodovina.containsKey(url)) {
 					zgodovina.get(url).n++;
 				} else {
-					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow, originalSites));
+					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow, robotsDelay, originalSites));
 				}
 
 			}
@@ -217,8 +218,12 @@ public class Crawler implements Runnable
 		if (pages == null) {
 			return true;
 		}
-		else if (pages.contains(url)) {
-			return false;
+		else {
+			for (String disallow : pages) {
+				if (url.contains(disallow)) {
+					return false;
+				}
+			}
 		}
 
 		return true;
@@ -298,7 +303,9 @@ public class Crawler implements Runnable
 		String robots = baseUrl + "/robots.txt";
         String siteMapContent = "";
         StringBuilder robotsContent = new StringBuilder();
-        boolean respectRobots = true;
+        boolean respectRobots = false;
+        boolean respectRobotsStar = false;
+        int crawlDelay = DEFAULT_CRAWL_DELAY;
 
     	try {
 			BufferedReader in = new BufferedReader(new InputStreamReader(new URL(robots).openStream()));
@@ -308,40 +315,73 @@ public class Crawler implements Runnable
 
 			while((subLink = in.readLine()) != null) {
 
+				// TODO USER AGENT is this ok?
+				if (subLink.toLowerCase().contains("user-agent")){
+					String line = subLink.split("llow: ")[0];
+					System.out.println("Useragent: " + line);
+
+					//get our user agent info
+					if (useragent == null) {
+						setUseragent();
+					}
+
+					if (line.toLowerCase().contains("\\*")) {
+						respectRobotsStar = true;
+						System.out.println("User-agent: Robots have some specifics for * user agent !!!!!!!!!");
+					}
+					else if (line.toLowerCase().contains(useragent)) {
+						respectRobots = true;
+						robotsDisallowLinks = new ArrayList<>();
+						System.out.println("User-agent: Robots have some specifics for our user agent !!!!!!!!!");
+					}
+				}
+
+				if (subLink.toLowerCase().contains("crawl-delay")){
+					String[] line = subLink.toLowerCase().split(":");
+					crawlDelay = Integer.parseInt(line[1]);
+					System.out.println("CRAWL delay: " + line[1]);
+				}
+
+
 				// If a sitemap is defined, all the URLs that are defined within it, should be added to the frontier.
+				// TODO: parse sitemap content and add it to frontier
 				if (subLink.toLowerCase().contains("sitemap")){
 					sitemap = subLink.split("map: ")[1];
                     WebResponse response = getWebResponse(sitemap);
                     if (response != null)
                     	siteMapContent = response.getContentAsString();
-					// TODO: parse sitemap content and add it to frontier
-				}
-
-				// TODO USER AGENT is this ok?
-				if (subLink.toLowerCase().contains("user-agent")){
-					System.out.println("Useragent: " + subLink.split("llow: ")[0]);
-					// this is not correct, if user agent is *, we are allowed
-//					if (!(subLink.split("llow: ")[0]).equals("User-agent: *")) {
-//						respectRobots = false;
-//						System.out.println("User-agent DOES NOT ALLOW us here!!!!");
-//						break;
-//					}
-					System.out.println("User-agent allows us here!");
 				}
 
 				//TODO CHECK
-				if (subLink.toLowerCase().contains("disallow")){
+				if (subLink.toLowerCase().contains("disallow") && (respectRobots || respectRobotsStar)){
+					String line = subLink.split("llow: ")[1];
 					if(logger)
-						System.out.println("----disallow pages: "+ baseUrl + subLink.split("llow: ")[1]);
-					robotsDisallowLinks.add(baseUrl + subLink.split("llow: "));
+						System.out.println("----disallow pages: "+ baseUrl + line);
+
+					// pravilo za dissalow vsebuje zvezdico, gledali bomo če je to containano v linku
+					if (line.toLowerCase().contains("*")) {
+						String[] split = line.split("\\*");
+						if (split.length > 1) {
+							robotsDisallowLinks.add(split[1]);
+						}
+						else {
+							robotsDisallowLinks.add(split[0]);
+						}
+					}
+					else {
+						robotsDisallowLinks.add(baseUrl + line);
+					}
 				}
 				robotsContent.append(subLink).append("\n");
 			}
-			if (respectRobots) {
+
+			if (respectRobots || respectRobotsStar) {
 				robotsDisallow.put(baseUrl, robotsDisallowLinks);
+				robotsDelay.put(baseUrl, crawlDelay);
 			}
 		} catch (IOException e) {
     		robotsDisallow.put(baseUrl, null);
+			robotsDelay.put(baseUrl, DEFAULT_CRAWL_DELAY);
 			System.err.println("For '" + baseUrl + "': " + e.getMessage());
 		}
     	return new String[]{robotsContent.toString(), siteMapContent};
@@ -369,6 +409,15 @@ public class Crawler implements Runnable
 			System.err.println("For '" + url + "': " + e.getMessage());
 			return null;
 		}
+	}
+
+	private void setUseragent() {
+		WebClient webClient = new WebClient();
+		WebClientOptions options = webClient.getOptions();
+		options.setJavaScriptEnabled(true);
+		options.setRedirectEnabled(true);
+
+		useragent = webClient.getBrowserVersion().getUserAgent();
 	}
 
     private void savePageToDB(Document document, String pageType, int httpStatusCode) {

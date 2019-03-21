@@ -20,6 +20,7 @@ public class Main {
         Queue<Frontier> frontier = new LinkedList<Frontier>();
 
         Map<String, ArrayList<String>> robotsDisallow = new LinkedHashMap<>();
+        Map<String, Integer> robotsDelay = new LinkedHashMap<>();
 
         List<String> originalSites;
         originalSites = Arrays.asList("evem.gov.si", "www.evem.gov.si", "e-uprava.gov.si", "www.e-uprava.gov.si",
@@ -43,13 +44,18 @@ public class Main {
 //
 //        frontier.add(new Frontier("https://podatki.gov.si/", ""));
 
-        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
+//        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
+
+        // CUSTOM SELECTION
+
+        frontier.add(new Frontier("http://www.gu.gov.si/", ""));
+
 
         Crawler crawler = new Crawler("", "",
                                         executor, zgodovina, frontier,
                                         new DatabaseManager(), logger,
                                         loggerHTMLUnit, robotsDisallow,
-                                        originalSites);
+                                        robotsDelay, originalSites);
         crawler.init();
     }
 }
