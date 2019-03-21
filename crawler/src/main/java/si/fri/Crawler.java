@@ -311,8 +311,8 @@ public class Crawler implements Runnable
 		String robots = baseUrl + "/robots.txt";
         String siteMapContent = "";
         StringBuilder robotsContent = new StringBuilder();
-        boolean respectRobots = false;
-        boolean respectRobotsStar = false;
+        boolean respectRobots = true;
+        boolean respectRobotsStar = true;
         int crawlDelay = DEFAULT_CRAWL_DELAY;
 
     	try {
@@ -334,7 +334,7 @@ public class Crawler implements Runnable
 						setUseragent();
 					}
 
-					if (line.toLowerCase().contains("\\*")) {
+					if (line.toLowerCase().contains("*")) {
 						respectRobotsStar = true;
 						System.out.println("User-agent: Robots have some specifics for * user agent !!!!!!!!!");
 					}
@@ -342,6 +342,10 @@ public class Crawler implements Runnable
 						respectRobots = true;
 						robotsDisallowLinks = new ArrayList<>();
 						System.out.println("User-agent: Robots have some specifics for our user agent !!!!!!!!!");
+					}
+					else {
+						respectRobots = false;
+						respectRobotsStar = false;
 					}
 				}
 
@@ -386,10 +390,11 @@ public class Crawler implements Runnable
 				robotsContent.append(subLink).append("\n");
 			}
 
-			if (respectRobots || respectRobotsStar) {
-				robotsDisallow.put(baseUrl, robotsDisallowLinks);
-				robotsDelay.put(baseUrl, crawlDelay);
-			}
+//			if (respectRobots || respectRobotsStar) {
+			robotsDisallow.put(baseUrl, robotsDisallowLinks);
+			robotsDelay.put(baseUrl, crawlDelay);
+//			}
+
 		} catch (IOException e) {
     		robotsDisallow.put(baseUrl, null);
 			robotsDelay.put(baseUrl, DEFAULT_CRAWL_DELAY);
