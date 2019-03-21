@@ -345,7 +345,8 @@ public class Crawler implements Runnable
 
 				if (subLink.toLowerCase().contains("crawl-delay")){
 					String[] line = subLink.toLowerCase().split(":");
-					crawlDelay = Integer.parseInt(line[1]);
+					String[] number = line[1].split(" ");
+					crawlDelay = Integer.parseInt(number[1]);
 					System.out.println("CRAWL delay: " + line[1]);
 				}
 
