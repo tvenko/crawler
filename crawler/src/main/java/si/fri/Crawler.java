@@ -233,6 +233,7 @@ public class Crawler implements Runnable
 	public void visit() {
         zgodovina.put(url, new Zgodovina(url, urlParent));
 
+        // TODO CHECK THIS
         try {
 			int sleepTime = DEFAULT_CRAWL_DELAY;
 			for (String baseSite : robotsDelay.keySet()) {
