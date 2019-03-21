@@ -21,6 +21,11 @@ public class Main {
 
         Map<String, ArrayList<String>> robotsDisallow = new LinkedHashMap<>();
 
+        List<String> originalSites;
+        originalSites = Arrays.asList("evem.gov.si", "www.evem.gov.si", "e-uprava.gov.si", "www.e-uprava.gov.si",
+                "podatki.gov.si", "www.podatki.gov.si", "www.e-prostor.gov.si", "e-prostor.gov.si/");
+
+
         boolean logger = true;
         boolean loggerHTMLUnit = false;
 
@@ -43,7 +48,8 @@ public class Main {
         Crawler crawler = new Crawler("", "",
                                         executor, zgodovina, frontier,
                                         new DatabaseManager(), logger,
-                                        loggerHTMLUnit, robotsDisallow);
+                                        loggerHTMLUnit, robotsDisallow,
+                                        originalSites);
         crawler.init();
     }
 }

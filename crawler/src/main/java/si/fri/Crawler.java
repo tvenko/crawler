@@ -88,8 +88,7 @@ public class Crawler implements Runnable
 	private final Queue<Frontier> frontier;
 	private final DatabaseManager dbManager;
 	private final Map<String, ArrayList<String>> robotsDisallow;
-	private final List<String> originalSites = List.of("evem.gov.si", "www.evem.gov.si", "e-uprava.gov.si", "www.e-uprava.gov.si",
-                                            "podatki.gov.si", "www.podatki.gov.si", "www.e-prostor.gov.si", "e-prostor.gov.si/");
+	private final List<String> originalSites;
 
 	private final boolean logger;
 	private final boolean loggerHTMLUnit;
@@ -98,7 +97,8 @@ public class Crawler implements Runnable
 				   Map<String, Zgodovina> zgodovina,
 				   Queue<Frontier> frontier, DatabaseManager dbManager,
 				   boolean logger, boolean loggerHTMLUnit,
-				   Map<String, ArrayList<String>> robotsDisallow) {
+				   Map<String, ArrayList<String>> robotsDisallow,
+				   List<String> originalSites) {
 		this.url = url;
 		this.urlParent = urlParent;
 		this.executor = executor;
@@ -108,6 +108,7 @@ public class Crawler implements Runnable
 		this.logger = logger;
 		this.loggerHTMLUnit = loggerHTMLUnit;
 		this.robotsDisallow = robotsDisallow;
+		this.originalSites = originalSites;
 	}
 
 	public void run() {
@@ -137,7 +138,7 @@ public class Crawler implements Runnable
 				if (zgodovina.containsKey(url)) {
 					zgodovina.get(url).n++;
 				} else {
-					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow));
+					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger, loggerHTMLUnit, robotsDisallow, originalSites));
 				}
 
 			}
