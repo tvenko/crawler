@@ -326,7 +326,8 @@ public class Crawler implements Runnable
 				// TODO USER AGENT is this ok?
 				if (subLink.toLowerCase().contains("user-agent")){
 					String line = subLink.split("llow: ")[0];
-					System.out.println("Useragent: " + line);
+					if(logger)
+						System.out.println("Useragent: " + line);
 
 					//get our user agent info
 					if (useragent == null) {
@@ -348,7 +349,8 @@ public class Crawler implements Runnable
 					String[] line = subLink.toLowerCase().split(":");
 					String[] number = line[1].split(" ");
 					crawlDelay = Integer.parseInt(number[1]);
-					System.out.println("CRAWL delay: " + line[1]);
+					if(logger)
+						System.out.println("CRAWL delay: " + line[1]);
 				}
 
 
