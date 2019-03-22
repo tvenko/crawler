@@ -9,20 +9,20 @@ import java.util.concurrent.Executors;
 
 public class Main {
 
-    public static final int NUMBER_OF_PARALLEL_THREADS = 1;
+    private static final int NUMBER_OF_PARALLEL_THREADS = 2;
 
     public static void main(String[] args) {
 
         ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_PARALLEL_THREADS);
 
-        Map<String, Zgodovina> zgodovina = new LinkedHashMap<String, Zgodovina>();
+        Map<String, Zgodovina> zgodovina = new LinkedHashMap<>();
 
-        Queue<Frontier> frontier = new LinkedList<Frontier>();
+        Queue<Frontier> frontier = new LinkedList<>();
 
         Map<String, ArrayList<String>> robotsDisallow = new LinkedHashMap<>();
         Map<String, Integer> robotsDelay = new LinkedHashMap<>();
 
-        Map<String, String> hashCode = new HashMap<String, String>();
+        Map<String, String> hashCode = new HashMap<>();
 
         List<String> originalSites;
         originalSites = Arrays.asList("evem.gov.si", "www.evem.gov.si", "e-uprava.gov.si", "www.e-uprava.gov.si",
@@ -40,17 +40,17 @@ public class Main {
             System.out.println("Failed to truncate Database" + e.getMessage());
         }
 
-//        frontier.add(new Frontier("http://evem.gov.si/", ""));
-//
+        frontier.add(new Frontier("http://evem.gov.si/", ""));
+
 //        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
 //
 //        frontier.add(new Frontier("https://podatki.gov.si/", ""));
-
+//
 //        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
 
         // CUSTOM SELECTION
 
-        frontier.add(new Frontier("http://www.gu.gov.si/", ""));
+//        frontier.add(new Frontier("http://www.gu.gov.si/", ""));
 
         Crawler crawler = new Crawler("", "",
                                         executor, zgodovina, frontier,

@@ -4,8 +4,6 @@ import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebClientOptions;
 import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.xml.XmlPage;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.logging.LogFactory;
 import org.jsoup.Jsoup;
@@ -15,7 +13,6 @@ import org.jsoup.select.Elements;
 import org.netpreserve.urlcanon.Canonicalizer;
 import org.netpreserve.urlcanon.ParsedUrl;
 import si.fri.db.DatabaseManager;
-import si.fri.db.PageEntity;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,56 +27,13 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 
 import java.util.concurrent.Future;
 
 public class Crawler implements Runnable
 {
-	/**
-	 * TODO	
-	 * 
-	 * Parallel
-	 * 
-	 * frontier - breadth-first strategy - first in first out
-	 * 
-	 * for each domain respect the robots.txt file if it exists.
-	 * 
-	 * Correctly respect the commands
-	 * 	- User-agent, 
-	 *  - Allow, 
-	 *  - Disallow, 
-	 *  - Crawl-delay and 
-	 *  - Sitemap. 
-	 *  
-	 * If a sitemap is defined, all the URLs that are defined within it, should be added to the frontier. 
-	 * 
-	 * Make sure to respect robots.txt as sites that define special crawling rules often contain spider traps.
-	 * 
-	 * During crawling you need to detect duplicate web pages.
-	 * For the deduplicated web pages, 
-	 * 	- check URLs that you already parsed and 
-	 *  - URLs that you have in the frontier if a duplicate exist. 
-	 *  - check if a web page with the same content was parsed already
-	 *  
-	 *  Links:
-	 *   When parsing links, include links from href attributes and 
-	 *   onclick Javascript events (e.g. location.href or document.location). Be careful to correctly extend the relative URLs before adding them to the frontier.
-	 *   
-	 *  Images:
-	 *   - Detect images on a web page only based on img tag, where the src attribute points to an image URL.
-	 *   
-	 *   Apart from web pages only, download also other files that web pages point to (there is no need to parse them). 
-	 *   File formats that you should take into account are .pdf, .doc, .docx, .ppt and .pptx.
-	 *   
-	 *   
-	 *   Database
-	 *
-	 *   robots sam za
-	 */
 
-	final static Pattern urlPattern = Pattern.compile("(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]");
-	public final static String BASE_URL_GOV = "gov.si";
+	private final static String BASE_URL_GOV = "gov.si";
 
 	private final String url;
 	private final String urlParent;
@@ -90,7 +44,7 @@ public class Crawler implements Runnable
 	private final Map<String, ArrayList<String>> robotsDisallow;
 	private final Map<String, Integer> robotsDelay;
 	private final List<String> originalSites;
-	Map<String, String> hashCode;
+	private Map<String, String> hashCode;
 
 	private final boolean logger;
 	private final boolean loggerHTMLUnit;
@@ -176,7 +130,7 @@ public class Crawler implements Runnable
 		}
 	}
 
-	public void halt()
+	private void halt()
 	{
 		System.out.println("----" + frontier.size());
 		try {
@@ -185,14 +139,14 @@ public class Crawler implements Runnable
 				System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
 				executor.shutdownNow();
 			}
-			//printHistory();
+			printHistory();
 		} catch (final InterruptedException e) {
 			System.err.println("Interrupted while waiting for executor shutdown." + e.getMessage());
 			Thread.currentThread().interrupt();
 		}
 	}
 
-	public void printHistory()
+	private void printHistory()
 	{
 		System.out.println("--------------------Zgodovina ----------------");
 		for (String name : zgodovina.keySet()) {
@@ -206,7 +160,7 @@ public class Crawler implements Runnable
 	}
 
 	//TODO
-	public boolean shouldIVisit(String url) {
+	private boolean shouldIVisit(String url) {
 
 		// get base URL
 		String baseUrl = getBaseUrl(url);
@@ -241,14 +195,18 @@ public class Crawler implements Runnable
         zgodovina.put(url, new Zgodovina(url, urlParent));
 
         // TODO CHECK THIS
+		//
         try {
 			int sleepTime = DEFAULT_CRAWL_DELAY;
-			for (String baseSite : robotsDelay.keySet()) {
-				if (url.contains(baseSite)) {
-					sleepTime = robotsDelay.get(baseSite) * 1000;
-					break;
-				}
+			if (robotsDelay.containsKey(getBaseUrl(url))) {
+				sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
 			}
+//			for (String baseSite : robotsDelay.keySet()) {
+//				if (url.contains(baseSite)) {
+//					sleepTime = robotsDelay.get(baseSite) * 1000;
+//					break;
+//				}
+//			}
 			Thread.sleep(sleepTime);
 		}
         catch (Exception e) {
@@ -343,12 +301,14 @@ public class Crawler implements Runnable
 
 					if (line.toLowerCase().contains("*")) {
 						respectRobotsStar = true;
-						System.out.println("User-agent: Robots have some specifics for * user agent !!!!!!!!!");
+						if (logger)
+							System.out.println("User-agent: Robots have some specifics for * user agent !!!!!!!!!");
 					}
 					else if (line.toLowerCase().contains(useragent)) {
 						respectRobots = true;
 						robotsDisallowLinks = new ArrayList<>();
-						System.out.println("User-agent: Robots have some specifics for our user agent !!!!!!!!!");
+						if (logger)
+							System.out.println("User-agent: Robots have some specifics for our user agent !!!!!!!!!");
 					}
 					else {
 						respectRobots = false;
@@ -534,7 +494,7 @@ public class Crawler implements Runnable
 		return domain;
 	}
 
-	public String generateHash(String text)
+	private String generateHash(String text)
 	{
 
 		String generatedText = null;
