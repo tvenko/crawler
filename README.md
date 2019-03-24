@@ -21,7 +21,7 @@ a folder crawler - Implementation of the crawler.
 docker run -d --name pg-database-crawler -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_DB=crawldb -p 5432:5432 postgres:11.2
 ```
 
-\#2 In newly created database run [script](http://zitnik.si/teaching/wier/data/pa1/crawldb.sql) - use IntelliJ SQL console, cp content of .sql and run query
+\#2 In newly created database run [script](https://github.com/ladislavskufca/IEPS_assignment_1_web_crawler/blob/master/crawldb.sql) - use IntelliJ SQL console, cp content of .sql and run query
 
 ```
 \#3 mvn clean install
