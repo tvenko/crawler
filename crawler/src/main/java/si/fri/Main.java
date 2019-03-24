@@ -19,7 +19,7 @@ public class Main {
 
         Queue<Frontier> frontier = new LinkedList<>();
 
-        Map<String, ArrayList<String>> robotsDisallow = new LinkedHashMap<>();
+        Map<String, String> robotsInfo = new LinkedHashMap<>();
         Map<String, Integer> robotsDelay = new LinkedHashMap<>();
 
         Map<String, String> hashCode = new HashMap<>();
@@ -29,7 +29,7 @@ public class Main {
                 "podatki.gov.si", "www.podatki.gov.si", "www.e-prostor.gov.si", "e-prostor.gov.si/");
 
 
-        boolean logger = false;
+        boolean logger = true;
         boolean loggerHTMLUnit = false;
 
         // empty DB
@@ -40,13 +40,13 @@ public class Main {
             System.out.println("Failed to truncate Database" + e.getMessage());
         }
 
-        frontier.add(new Frontier("http://evem.gov.si/", ""));
+//        frontier.add(new Frontier("http://evem.gov.si/", ""));
 
 //        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
 //
 //        frontier.add(new Frontier("https://podatki.gov.si/", ""));
 //
-//        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
+        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
 
         // CUSTOM SELECTION
 
@@ -55,9 +55,8 @@ public class Main {
         Crawler crawler = new Crawler("", "",
                                         executor, zgodovina, frontier,
                                         new DatabaseManager(), logger,
-                                        loggerHTMLUnit, robotsDisallow,
-                                        robotsDelay, originalSites,
-                                        hashCode);
+                                        loggerHTMLUnit, robotsInfo,
+                                        robotsDelay, originalSites, hashCode);
         crawler.init();
     }
 }

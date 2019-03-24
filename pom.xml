@@ -61,5 +61,12 @@
             <artifactId>urlcanon</artifactId>
             <version>0.1.1</version>
         </dependency>
+
+        <!--https://github.com/pandzel/RobotsTxt-->
+        <dependency>
+            <groupId>com.panforge</groupId>
+            <artifactId>robots</artifactId>
+            <version>1.4.0</version>
+        </dependency>
     </dependencies>
 </project>

@@ -4,6 +4,8 @@ import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebClientOptions;
 import com.gargoylesoftware.htmlunit.WebResponse;
+import com.panforge.robotstxt.Grant;
+import com.panforge.robotstxt.RobotsTxt;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.logging.LogFactory;
 import org.jsoup.Jsoup;
@@ -14,10 +16,7 @@ import org.netpreserve.urlcanon.Canonicalizer;
 import org.netpreserve.urlcanon.ParsedUrl;
 import si.fri.db.DatabaseManager;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.MessageDigest;
@@ -41,7 +40,7 @@ public class Crawler implements Runnable
 	private final Map<String, Zgodovina> zgodovina;
 	private final Queue<Frontier> frontier;
 	private final DatabaseManager dbManager;
-	private final Map<String, ArrayList<String>> robotsDisallow;
+	private final Map<String, String> robotsInfo;
 	private final Map<String, Integer> robotsDelay;
 	private final List<String> originalSites;
 	private Map<String, String> hashCode;
@@ -55,7 +54,7 @@ public class Crawler implements Runnable
 				   Map<String, Zgodovina> zgodovina,
 				   Queue<Frontier> frontier, DatabaseManager dbManager,
 				   boolean logger, boolean loggerHTMLUnit,
-				   Map<String, ArrayList<String>> robotsDisallow,
+				   Map<String, String> robotsInfo,
 				   Map<String, Integer> robotsDelay, List<String> originalSites,
 				   Map<String, String> hashCode) {
 		this.url = url;
@@ -66,7 +65,7 @@ public class Crawler implements Runnable
 		this.dbManager = dbManager;
 		this.logger = logger;
 		this.loggerHTMLUnit = loggerHTMLUnit;
-		this.robotsDisallow = robotsDisallow;
+		this.robotsInfo = robotsInfo;
 		this.robotsDelay = robotsDelay;
 		this.originalSites = originalSites;
 		this.hashCode = hashCode;
@@ -81,8 +80,8 @@ public class Crawler implements Runnable
 			System.out.println("Velikost frontier-ja: " + frontier.size());
 	}
 
-	public void init()
-	{
+	public void init() {
+		setUseragent(); // TODO - optimise this from MAIN.java
 		Future future = null;
 		while (!frontier.isEmpty()){
 			synchronized(frontier) {
@@ -100,7 +99,7 @@ public class Crawler implements Runnable
 					zgodovina.get(url).n++;
 				} else {
 					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger,
-							loggerHTMLUnit, robotsDisallow, robotsDelay, originalSites, hashCode));
+							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode));
 				}
 
 			}
@@ -171,48 +170,47 @@ public class Crawler implements Runnable
 		}
 
 		// 2. ali robots dovoli dostop?
-		if (!robotsDisallow.containsKey(baseUrl)) {
+		if (!robotsInfo.containsKey(baseUrl)) {
 			String[] robots = robots(baseUrl);
 			saveSiteToDB(getDomain(url), robots[0], robots[1]);
 		}
-		ArrayList<String> pages = robotsDisallow.get(baseUrl);
-		if (pages == null) {
-			return true;
-		}
-		else {
-			for (String disallow : pages) {
-				if (url.contains(disallow)) {
-					return false;
+
+		String robotsTxtString = robotsInfo.get(baseUrl);
+		if (robotsTxtString != null) {
+
+			try {
+				ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(robotsTxtString.getBytes("UTF-8"));
+				RobotsTxt robotsTxt = RobotsTxt.read(byteArrayInputStream);
+
+				Grant grant = robotsTxt.ask(useragent, url);
+				if (grant == null || grant.hasAccess()) {
+					if (logger)
+						System.out.println("robots allow access for url " + url);
+					return true;
 				}
+
+			} catch (Exception e) {
+				System.out.println("Exception when parsing robots for url " + url + " " + e.getMessage());
+
 			}
 		}
 
-		return true;
+		return false;
 	}
 
 	//TODO - popravi parsanje linkov
 	public void visit() {
+
         zgodovina.put(url, new Zgodovina(url, urlParent));
 
-        // TODO CHECK THIS
-		//
+        // respect delay
         try {
-			int sleepTime = DEFAULT_CRAWL_DELAY;
-			if (robotsDelay.containsKey(getBaseUrl(url))) {
-				sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
-			}
-//			for (String baseSite : robotsDelay.keySet()) {
-//				if (url.contains(baseSite)) {
-//					sleepTime = robotsDelay.get(baseSite) * 1000;
-//					break;
-//				}
-//			}
+			int sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
 			Thread.sleep(sleepTime);
 		}
         catch (Exception e) {
         	System.out.println("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
 		}
-
 
 		// Fetch the HTML code
 		if(logger)
@@ -273,101 +271,55 @@ public class Crawler implements Runnable
     // For each domain respect the robots.txt file if it exists.
     public String[] robots(String baseUrl) {
 
-		String robots = baseUrl + "/robots.txt";
-        String siteMapContent = "";
-        StringBuilder robotsContent = new StringBuilder();
-        boolean respectRobots = true;
-        boolean respectRobotsStar = true;
-        int crawlDelay = DEFAULT_CRAWL_DELAY;
+		String[] tmp = new String[2];
 
-    	try {
-			BufferedReader in = new BufferedReader(new InputStreamReader(new URL(robots).openStream()));
-			String subLink;
-			String sitemap;
-            ArrayList<String> robotsDisallowLinks = new ArrayList<>();
+		try (InputStream robotsTxtStream = new URL(baseUrl + "/robots.txt").openStream()) {
+			RobotsTxt robotsTxt = RobotsTxt.read(robotsTxtStream);
+			tmp = new String[2];
+			tmp[0] = robotsTxt.toString();
+			robotsInfo.put(baseUrl, robotsTxt.toString());
 
-			while((subLink = in.readLine()) != null) {
-
-				// TODO USER AGENT is this ok?
-				if (subLink.toLowerCase().contains("user-agent")){
-					String line = subLink.split("llow: ")[0];
-					if(logger)
-						System.out.println("Useragent: " + line);
-
-					//get our user agent info
-					if (useragent == null) {
-						setUseragent();
-					}
-
-					if (line.toLowerCase().contains("*")) {
-						respectRobotsStar = true;
-						if (logger)
-							System.out.println("User-agent: Robots have some specifics for * user agent !!!!!!!!!");
-					}
-					else if (line.toLowerCase().contains(useragent)) {
-						respectRobots = true;
-						robotsDisallowLinks = new ArrayList<>();
-						if (logger)
-							System.out.println("User-agent: Robots have some specifics for our user agent !!!!!!!!!");
-					}
-					else {
-						respectRobots = false;
-						respectRobotsStar = false;
-					}
+			// crawl delay
+			Grant grant = robotsTxt.ask(useragent, baseUrl);
+			if (grant == null || grant.hasAccess()) {
+				Integer crawlDelay = grant.getCrawlDelay();
+				if (grant != null && crawlDelay != null) {
+					robotsDelay.put(baseUrl, crawlDelay);
+				} else {
+					robotsDelay.put(baseUrl, DEFAULT_CRAWL_DELAY);
 				}
-
-				if (subLink.toLowerCase().contains("crawl-delay")){
-					String[] line = subLink.toLowerCase().split(":");
-					String[] number = line[1].split(" ");
-					crawlDelay = Integer.parseInt(number[1]);
-					if(logger)
-						System.out.println("CRAWL delay: " + line[1]);
-				}
-
-
-				// If a sitemap is defined, all the URLs that are defined within it, should be added to the frontier.
-				// TODO: parse sitemap content and add it to frontier
-				if (subLink.toLowerCase().contains("sitemap")){
-					sitemap = subLink.split("map: ")[1];
-                    WebResponse response = getWebResponse(sitemap);
-                    if (response != null)
-                    	siteMapContent = response.getContentAsString();
-				}
-
-				//TODO CHECK
-				if (subLink.toLowerCase().contains("disallow") && (respectRobots || respectRobotsStar)){
-					String line = subLink.split("llow: ")[1];
-					if(logger)
-						System.out.println("----disallow pages: "+ baseUrl + line);
-
-					// pravilo za dissalow vsebuje zvezdico, gledali bomo če je to containano v linku
-					if (line.toLowerCase().contains("*")) {
-						String[] split = line.split("\\*");
-						if (split.length > 1) {
-							robotsDisallowLinks.add(split[1]);
-						}
-						else {
-							robotsDisallowLinks.add(split[0]);
-						}
-					}
-					else {
-						robotsDisallowLinks.add(baseUrl + line);
-					}
-				}
-				robotsContent.append(subLink).append("\n");
 			}
 
-//			if (respectRobots || respectRobotsStar) {
-			robotsDisallow.put(baseUrl, robotsDisallowLinks);
-			robotsDelay.put(baseUrl, crawlDelay);
-//			}
+			// site map
+			List<String> sitemaps = robotsTxt.getSitemaps();
+			if (!sitemaps.isEmpty()) {
+				// TODO - fix here if more then 1 sitemap
+				// TODO: parse sitemap content and add it to frontier
+				WebResponse response = getWebResponse(sitemaps.get(0));
+				if (response != null) {
+					tmp[1] = response.getContentAsString();
+				}
+				else {
+					tmp[1] = null;
+				}
+			}
+			else {
+				tmp[1] = null;
+			}
 
-		} catch (IOException e) {
-    		robotsDisallow.put(baseUrl, null);
-			robotsDelay.put(baseUrl, DEFAULT_CRAWL_DELAY);
-			System.err.println("For '" + baseUrl + "': " + e.getMessage());
+			return tmp;
+		} catch (Exception e) {
+			if (logger) {
+				System.out.println("Cannot parse robots.");
+				e.printStackTrace();
+			}
 		}
-    	return new String[]{robotsContent.toString(), siteMapContent};
+
+		tmp[0] = null;
+		tmp[1] = null;
+		robotsDelay.put(baseUrl, DEFAULT_CRAWL_DELAY);
+
+		return tmp;
     }
 
     private WebResponse getWebResponse(String url) {
