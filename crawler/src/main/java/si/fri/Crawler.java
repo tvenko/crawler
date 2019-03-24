@@ -290,6 +290,8 @@ public class Crawler implements Runnable
 					robotsDelay.put(baseUrl, crawlDelay);
 				} else {
 					robotsDelay.put(baseUrl, DEFAULT_CRAWL_DELAY);
+					if (logger)
+						System.out.println("crawlDelay is null for page " + baseUrl);
 				}
 			}
 
