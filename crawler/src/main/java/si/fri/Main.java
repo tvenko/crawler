@@ -1,15 +1,18 @@
 package si.fri;
 
 
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebClientOptions;
 import si.fri.db.DatabaseManager;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Main {
 
-    private static final int NUMBER_OF_PARALLEL_THREADS = 2;
+    private static final int NUMBER_OF_PARALLEL_THREADS = 8;
 
     public static void main(String[] args) {
 
@@ -31,6 +34,7 @@ public class Main {
 
         boolean logger = true;
         boolean loggerHTMLUnit = false;
+        String userAgent = setAndGetUserAgent();
 
         // empty DB
         DatabaseManager dbManager = new DatabaseManager();
@@ -40,24 +44,39 @@ public class Main {
             System.out.println("Failed to truncate Database" + e.getMessage());
         }
 
-//        frontier.add(new Frontier("http://evem.gov.si/", ""));
+        frontier.add(new Frontier("http://evem.gov.si/", ""));
 
-//        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
-//
-//        frontier.add(new Frontier("https://podatki.gov.si/", ""));
-//
+        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
+
+        frontier.add(new Frontier("https://podatki.gov.si/", ""));
+
         frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
 
         // CUSTOM SELECTION
 
 //        frontier.add(new Frontier("http://www.gu.gov.si/", ""));
 
+        // TIMESTAMP start
+        LocalDateTime datetime = LocalDateTime.now();
+        System.out.println("Start time: " + datetime);
+
         Crawler crawler = new Crawler("", "",
                                         executor, zgodovina, frontier,
                                         new DatabaseManager(), logger,
                                         loggerHTMLUnit, robotsInfo,
-                                        robotsDelay, originalSites, hashCode);
+                                        robotsDelay, originalSites,
+                                        hashCode, userAgent);
         crawler.init();
+    }
+
+    // TODO - should we name our user agent?
+    private static String setAndGetUserAgent() {
+        WebClient webClient = new WebClient();
+        WebClientOptions options = webClient.getOptions();
+        options.setJavaScriptEnabled(true);
+        options.setRedirectEnabled(true);
+
+        return webClient.getBrowserVersion().getUserAgent();
     }
 }
 

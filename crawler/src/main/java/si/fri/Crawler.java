@@ -24,6 +24,7 @@ import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -46,11 +47,11 @@ public class Crawler implements Runnable
 	private final Map<String, String> robotsInfo;
 	private final Map<String, Integer> robotsDelay;
 	private final List<String> originalSites;
-	private Map<String, String> hashCode;
+	private final Map<String, String> hashCode;
+    private final String useragent;
 
-	private final boolean logger;
+    private final boolean logger;
 	private final boolean loggerHTMLUnit;
-	private String useragent;
 	private static final int DEFAULT_CRAWL_DELAY = 4;
 
 	public Crawler(String url, String urlParent, ExecutorService executor,
@@ -59,7 +60,7 @@ public class Crawler implements Runnable
 				   boolean logger, boolean loggerHTMLUnit,
 				   Map<String, String> robotsInfo,
 				   Map<String, Integer> robotsDelay, List<String> originalSites,
-				   Map<String, String> hashCode) {
+				   Map<String, String> hashCode, String useragent) {
 		this.url = url;
 		this.urlParent = urlParent;
 		this.executor = executor;
@@ -72,6 +73,7 @@ public class Crawler implements Runnable
 		this.robotsDelay = robotsDelay;
 		this.originalSites = originalSites;
 		this.hashCode = hashCode;
+		this.useragent = useragent;
 	}
 
 	public void run() {
@@ -84,7 +86,6 @@ public class Crawler implements Runnable
 	}
 
 	public void init() {
-		setUseragent(); // TODO - optimise this from MAIN.java
 		Future future = null;
 		while (!frontier.isEmpty()){
 			synchronized(frontier) {
@@ -102,7 +103,7 @@ public class Crawler implements Runnable
 					zgodovina.get(url).n++;
 				} else {
 					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger,
-							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode));
+							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent));
 				}
 
 			}
@@ -142,6 +143,9 @@ public class Crawler implements Runnable
 				executor.shutdownNow();
 			}
 			printHistory();
+            // TIMESTAMP end
+            LocalDateTime datetime = LocalDateTime.now();
+            System.out.println("End time: " + datetime);
 		} catch (final InterruptedException e) {
 			System.err.println("Interrupted while waiting for executor shutdown." + e.getMessage());
 			Thread.currentThread().interrupt();
@@ -161,7 +165,6 @@ public class Crawler implements Runnable
 		System.out.println("Velikost zgodovine: " + zgodovina.size());
 	}
 
-	//TODO
 	private boolean shouldIVisit(String url) {
 
 		// get base URL
@@ -349,15 +352,6 @@ public class Crawler implements Runnable
 			System.err.println("For '" + url + "': " + e.getMessage());
 			return null;
 		}
-	}
-
-	private void setUseragent() {
-		WebClient webClient = new WebClient();
-		WebClientOptions options = webClient.getOptions();
-		options.setJavaScriptEnabled(true);
-		options.setRedirectEnabled(true);
-
-		useragent = webClient.getBrowserVersion().getUserAgent();
 	}
 
     private void savePageToDB(Document document, String pageType, int httpStatusCode) {
