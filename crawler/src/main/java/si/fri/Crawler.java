@@ -299,17 +299,25 @@ public class Crawler implements Runnable
 			}
 
 			// site map
-			List<String> sitemaps = robotsTxt.getSitemaps();
+            // TODO: parse sitemap content and add it to frontier
+            List<String> sitemaps = robotsTxt.getSitemaps();
 			if (!sitemaps.isEmpty()) {
-				// TODO - fix here if more then 1 sitemap
-				// TODO: parse sitemap content and add it to frontier
-				WebResponse response = getWebResponse(sitemaps.get(0));
-				if (response != null) {
-					tmp[1] = response.getContentAsString();
-				}
+                StringBuilder stringBuilder = new StringBuilder();
+
+                for (String sitemap : sitemaps) {
+                    WebResponse response = getWebResponse(sitemap);
+                    if (response != null) {
+                        stringBuilder.append(response.getContentAsString());
+                    }
+                }
+
+				String sitemapsContent = stringBuilder.toString();
+				if (sitemapsContent.equals("")) {
+                    tmp[1] = null;
+                }
 				else {
-					tmp[1] = null;
-				}
+				    tmp[1] = sitemapsContent;
+                }
 			}
 			else {
 				tmp[1] = null;
