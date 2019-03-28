@@ -11,6 +11,7 @@ import org.apache.commons.logging.LogFactory;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 import org.netpreserve.urlcanon.Canonicalizer;
 import org.netpreserve.urlcanon.ParsedUrl;
@@ -345,7 +346,6 @@ public class Crawler implements Runnable
 			}
 
 			// site map
-            // TODO: parse sitemap content and add it to frontier
             List<String> sitemaps = robotsTxt.getSitemaps();
 			if (!sitemaps.isEmpty()) {
                 StringBuilder stringBuilder = new StringBuilder();
@@ -354,6 +354,25 @@ public class Crawler implements Runnable
                     WebResponse response = getWebResponse(sitemap);
                     if (response != null) {
                         stringBuilder.append(response.getContentAsString());
+
+                        Document sitemapDoc = Jsoup.parse(response.getContentAsString(), "", Parser.xmlParser());
+                        for (Element e : sitemapDoc.select("loc")) {
+                            String p = e.toString();
+                            p = p.replace("<loc>\n ", "");
+                            p = p.replace("\n</loc>", "");
+
+                            ParsedUrl parsedUrl = ParsedUrl.parseUrl(p);
+                            // https://github.com/iipc/urlcanon
+                            //	 Make sure that you work with canonicalized URLs only!
+                            Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
+                            p = parsedUrl.toString();
+
+							if (shouldIVisit(p)) {
+								frontier.add(new Frontier(p, baseUrl));
+								if (logger)
+									System.out.println("New url " + p + " added to frontier from sitemap.");
+							}
+                        }
                     }
                 }
 
