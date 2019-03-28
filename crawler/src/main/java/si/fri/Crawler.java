@@ -173,7 +173,7 @@ public class Crawler implements Runnable
 		System.out.println("Velikost zgodovine: " + zgodovina.size());
 	}
 
-	private boolean shouldIVisit(String url) {
+	private boolean shouldIVisit(final String url) {
 
 		// get base URL
 		String baseUrl = getBaseUrl(url);
@@ -448,7 +448,7 @@ public class Crawler implements Runnable
 		}
 	}
 
-    private void savePageToDB(Document document, String pageType, int httpStatusCode) {
+    private void savePageToDB(final Document document, String pageType, final int httpStatusCode) {
 
 		//hash
 		String hash = generateHash(document.toString());
@@ -477,7 +477,7 @@ public class Crawler implements Runnable
 		}
 	}
 
-	private void savePageDataToDB(String urlParent, String url) {
+	private void savePageDataToDB(final String urlParent, final String url) {
 		byte[] data = getBinaryDocument(url);
 		if (data != null) {
 			String code = FilenameUtils.getExtension(url).toUpperCase();
@@ -485,7 +485,7 @@ public class Crawler implements Runnable
 		}
 	}
 
-	private void saveImageToDB(String urlParent, String url) {
+	private void saveImageToDB(final String urlParent, final String url) {
 		byte[] data = getBinaryDocument(url);
 		if (data != null) {
 			String fileName = FilenameUtils.getName(url);
@@ -494,11 +494,11 @@ public class Crawler implements Runnable
 		}
 	}
 
-	private void saveSiteToDB(String domain, String robots, String sitemap) {
+	private void saveSiteToDB(final String domain, final String robots, final String sitemap) {
         dbManager.addSiteToDB(domain, robots, sitemap);
     }
 
-    private byte[] getBinaryDocument(String url) {
+    private byte[] getBinaryDocument(final String url) {
 		try {
 			URL document = new URL(url);
 			InputStream stream = document.openStream();
@@ -513,7 +513,7 @@ public class Crawler implements Runnable
 	}
 
 	// Iz url dobimo BASE URL
-	private String getBaseUrl(String url) {
+	private String getBaseUrl(final String url) {
 		String baseUrl = "";
 
 		try {
@@ -526,7 +526,7 @@ public class Crawler implements Runnable
 		return baseUrl;
 	}
 
-	private String getDomain(String url) {
+	private String getDomain(final String url) {
 		String domain = "";
 
 		try {
@@ -539,7 +539,7 @@ public class Crawler implements Runnable
 		return domain;
 	}
 
-	private String generateHash(String text)
+	private String generateHash(final String text)
 	{
 
 		String generatedText = null;
