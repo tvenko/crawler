@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 
 public class Main {
 
-    private static final int NUMBER_OF_PARALLEL_THREADS = 8;
+    private static final int NUMBER_OF_PARALLEL_THREADS = 4;
 
     public static void main(String[] args) {
 
@@ -54,7 +54,15 @@ public class Main {
 
         // CUSTOM SELECTION
 
-//        frontier.add(new Frontier("http://www.gu.gov.si/", ""));
+        frontier.add(new Frontier("http://www.gu.gov.si/", ""));
+
+        frontier.add(new Frontier("http://www.fu.gov.si/", ""));
+
+        frontier.add(new Frontier("http://teorija-priprava.gov.si/", ""));
+
+        frontier.add(new Frontier("https://www.ess.gov.si/", ""));
+
+        frontier.add(new Frontier("http://www.mzz.gov.si/", ""));
 
         // TIMESTAMP start
         LocalDateTime datetime = LocalDateTime.now();
