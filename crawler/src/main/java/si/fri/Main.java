@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 
 public class Main {
 
-    private static final int NUMBER_OF_PARALLEL_THREADS = 4;
+    private static final int NUMBER_OF_PARALLEL_THREADS = 8;
 
     public static void main(String[] args) {
 
@@ -44,25 +44,25 @@ public class Main {
             System.out.println("Failed to truncate Database" + e.getMessage());
         }
 
-        frontier.add(new Frontier("http://evem.gov.si/", ""));
+        frontier.add(new Frontier("http://evem.gov.si", ""));
 
-        frontier.add(new Frontier("https://e-uprava.gov.si/", ""));
+        frontier.add(new Frontier("https://e-uprava.gov.si", ""));
 
-        frontier.add(new Frontier("https://podatki.gov.si/", ""));
+        frontier.add(new Frontier("https://podatki.gov.si", ""));
 
-        frontier.add(new Frontier("http://www.e-prostor.gov.si/", ""));
+        frontier.add(new Frontier("http://www.e-prostor.gov.si", ""));
 
         // CUSTOM SELECTION
 
-        frontier.add(new Frontier("http://www.gu.gov.si/", ""));
+        frontier.add(new Frontier("http://www.gu.gov.si", ""));
 
-        frontier.add(new Frontier("http://www.fu.gov.si/", ""));
+        frontier.add(new Frontier("http://www.fu.gov.si", ""));
 
-        frontier.add(new Frontier("http://teorija-priprava.gov.si/", ""));
+        frontier.add(new Frontier("http://teorija-priprava.gov.si", ""));
 
-        frontier.add(new Frontier("https://www.ess.gov.si/", ""));
+        frontier.add(new Frontier("https://www.ess.gov.si", ""));
 
-        frontier.add(new Frontier("http://www.mzz.gov.si/", ""));
+        frontier.add(new Frontier("http://www.mzz.gov.si", ""));
 
         // TIMESTAMP start
         LocalDateTime datetime = LocalDateTime.now();
