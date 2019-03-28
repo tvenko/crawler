@@ -301,12 +301,12 @@ public class Crawler implements Runnable
 		}
 	}
 
-	public String splitHash(String p) {
+	public String splitHash(final String p) {
 		String[] tmp = p.split("#");
 		return tmp[0];
 	}
 
-	public void extractLinks(Elements elements, String key) {
+	public void extractLinks(final Elements elements, final String key) {
 		String p;
 		ParsedUrl parsedUrl;
 		for (Element page : elements) {
@@ -342,7 +342,7 @@ public class Crawler implements Runnable
 	}
 
     // For each domain respect the robots.txt file if it exists.
-    public String[] robots(String baseUrl) {
+    public String[] robots(final String baseUrl) {
 
 		String[] tmp = new String[2];
 
@@ -423,7 +423,7 @@ public class Crawler implements Runnable
 		return tmp;
     }
 
-    private WebResponse getWebResponse(String url) {
+    private WebResponse getWebResponse(final String url) {
 		// first run with headless browser, so we can run potential JS
 		WebClient webClient = new WebClient();
 		WebClientOptions options = webClient.getOptions();
