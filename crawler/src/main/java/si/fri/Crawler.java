@@ -55,6 +55,7 @@ public class Crawler implements Runnable
     private final boolean logger;
 	private final boolean loggerHTMLUnit;
 	private static final int DEFAULT_CRAWL_DELAY = 4;
+	private static final int LIMIT_HALT_SIZE = 100000;
 
 	public Crawler(String url, String urlParent, ExecutorService executor,
 				   Map<String, Zgodovina> zgodovina,
@@ -98,6 +99,11 @@ public class Crawler implements Runnable
 					String baseUrl = getBaseUrl(url);
 					String[] robots = robots(baseUrl);
 					saveSiteToDB(getDomain(url), robots[0], robots[1]);
+				}
+
+				// Ali smo dosegli mejo strani
+				if (zgodovina.size() >= LIMIT_HALT_SIZE) {
+					halt();
 				}
 
 				// Ali smo stran že obiskali?
