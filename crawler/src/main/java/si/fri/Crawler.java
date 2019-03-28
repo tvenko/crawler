@@ -212,7 +212,6 @@ public class Crawler implements Runnable
 		return false;
 	}
 
-	//TODO - popravi parsanje linkov
 	public void visit() {
 
         zgodovina.put(url, new Zgodovina(url, urlParent));
@@ -250,7 +249,7 @@ public class Crawler implements Runnable
 				// Make sure that you work with canonicalized URLs only!
 				Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
 				p = parsedUrl.toString();
-				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
+				if (!p.contains("#") && !p.contains("(at)") && p.length() > 1) {
 					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx")) {
 						if (originalSites.contains(getDomain(url))) {
 							savePageDataToDB(url, p);
@@ -288,7 +287,7 @@ public class Crawler implements Runnable
 				// Make sure that you work with canonicalized URLs only!
 				Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
 				p = parsedUrl.toString();
-				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
+				if (!p.contains("#") && p.length() > 1) {
 					if (!p.contains("http://") && !p.contains("https://"))
 						p = getBaseUrl(url) + "/" + p;
 					if (originalSites.contains(getDomain(url)))
