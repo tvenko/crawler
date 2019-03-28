@@ -37,6 +37,7 @@ public class Crawler implements Runnable
 {
 
 	private final static String BASE_URL_GOV = "gov.si";
+	private final static int TIMEOUT = 15000; // in milliseconds
 
 	private final String url;
 	private final String urlParent;
@@ -111,7 +112,7 @@ public class Crawler implements Runnable
 
 		synchronized (frontier)
 		{
-			if(frontier.isEmpty())
+			if(frontier.isEmpty()) // TODO - dodaj stop ko pride do 100k strani
 			{
 				try
 				{
@@ -230,6 +231,8 @@ public class Crawler implements Runnable
 
 			savePageToDB(document, response.getContentType(), response.getStatusCode());
 
+
+			// Parse the HTML to extract a with href attributes
 			Elements linksOnPage = document.select("a[href]");
 
 			String p;
@@ -259,16 +262,59 @@ public class Crawler implements Runnable
 				}
 			}
 
+			// TODO - we check only a and button, we should check every element
+			// Parse the HTML to extract a onclick events
+			Elements linksOnClickOnPage = document.select("a[onclick]");
+			extractLinks(linksOnClickOnPage, "onclick");
+
+			// Parse the HTML to extract button onclick events
+			Elements buttonsOnClickOnPage = document.select("button[onclick]");
+			extractLinks(buttonsOnClickOnPage, "onclick");
+
+
 			// Parse the HTML to extract imgs with src ending (dot for mark)
 			Elements srcImgs = document.select("img[src$='']");
 
 			for (Element page : srcImgs) {
-				p = page.attr("src");
+				parsedUrl = ParsedUrl.parseUrl(page.attr("abs:src"));
+				// https://github.com/iipc/urlcanon
+				// Make sure that you work with canonicalized URLs only!
+				Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
+				p = parsedUrl.toString();
 				if (!p.contains("#") && !p.contains("?") && p.length() > 1) {
 					if (!p.contains("http://") && !p.contains("https://"))
 						p = getBaseUrl(url) + "/" + p;
 					if (originalSites.contains(getDomain(url)))
 						saveImageToDB(url, p);
+				}
+			}
+		}
+	}
+
+	public void extractLinks(Elements elements, String key) {
+		String p;
+		ParsedUrl parsedUrl;
+		for (Element page : elements) {
+			parsedUrl = ParsedUrl.parseUrl(page.attr(key));
+			// https://github.com/iipc/urlcanon
+			// Make sure that you work with canonicalized URLs only!
+			Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
+			p = parsedUrl.toString();
+			if (!p.contains("javascript") && p.contains("http")) {
+
+				p = p.replace("document.location.href=", "");
+				p = p.replace("location.href=", "");
+
+				/* is URL valid*/
+				try {
+					String uri = new URL(p).toURI().toString();
+					if (shouldIVisit(uri)) {
+						frontier.add(new Frontier(uri, url));
+					}
+				}
+				catch (Exception e) {
+					if (logger)
+						System.out.println("Not a link on onclick element, " + e.getMessage());
 				}
 			}
 		}
@@ -344,6 +390,7 @@ public class Crawler implements Runnable
 		WebClientOptions options = webClient.getOptions();
 		options.setJavaScriptEnabled(true);
 		options.setRedirectEnabled(true);
+		options.setTimeout(TIMEOUT);
 
 		// disable logging of htmlunit
 		if (!loggerHTMLUnit) {
