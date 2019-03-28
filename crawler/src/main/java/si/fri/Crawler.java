@@ -272,14 +272,10 @@ public class Crawler implements Runnable
 				}
 			}
 
-			// TODO - we check only a and button, we should check every element
-			// Parse the HTML to extract a onclick events
-			Elements linksOnClickOnPage = document.select("a[onclick]");
-			extractLinks(linksOnClickOnPage, "onclick");
 
-			// Parse the HTML to extract button onclick events
-			Elements buttonsOnClickOnPage = document.select("button[onclick]");
-			extractLinks(buttonsOnClickOnPage, "onclick");
+			// Parse the HTML to extract onclick events
+			Elements linksOnClickOnPage = document.getElementsByAttribute("onclick");
+            extractLinks(linksOnClickOnPage, "onclick");
 
 
 			// Parse the HTML to extract imgs with src ending (dot for mark)
@@ -319,10 +315,16 @@ public class Crawler implements Runnable
 			// Make sure that you work with canonicalized URLs only!
 			Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
 			p = parsedUrl.toString();
-			if (!p.contains("javascript") && p.contains("http")) {
+			if (!p.contains("javascript") && p.contains("http") && p.contains("location")) {
 
-				p = p.replace("document.location.href=", "");
-				p = p.replace("location.href=", "");
+				if (p.contains("href")) {
+					p = p.replace("document.location.href=", "");
+					p = p.replace("location.href=", "");
+				}
+				else if (p.contains("location.assign")) {
+					p = p.replace("document.location.assign(", "");
+					p = p.replace(")", "");
+				}
 
 				/* is URL valid*/
 				try {
