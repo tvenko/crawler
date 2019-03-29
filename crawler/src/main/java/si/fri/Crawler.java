@@ -91,12 +91,13 @@ public class Crawler implements Runnable
 
 		if(logger) {
 			LOGGER.info("Executor: " + url + " " + Thread.currentThread().getName() + " "  + executor.toString());
-			//System.out.println("Executor: " + Thread.currentThread().getName() + " " + executor.toString());
+			System.out.println("Executor: " + Thread.currentThread().getName() + " " + frontier.size() + " " + executor.toString());
 		}
 		if(logger){
 			LOGGER.info("Velikost frontier-ja: " + frontier.size());
 			LOGGER.info("Velikost zgodovine: " + zgodovina.size());
 		}
+		init();
 	}
 
 	public void init() {
@@ -133,27 +134,21 @@ public class Crawler implements Runnable
 
 		synchronized (frontier)
 		{
-			if(frontier.isEmpty()) // TODO - dodaj stop ko pride do 100k strani
+			if(frontier.isEmpty())
 			{
 				try
 				{
-					//Thread.sleep(10000);
+					Thread.sleep(10000);
 
-
-
-					while(!future.isDone()){}
+					//while(!future.isDone()){}
 
 					//executor = Executors.newFixedThreadPool(8);
 
 					if (frontier.isEmpty()) {
 						halt();
 					}
-					else {
-						//executor = Executors.newCachedThreadPool();
-						executor = Executors.newFixedThreadPool(16);
+					else
 						init();
-					}
-
 				}
 				catch (Exception e)
 				{
