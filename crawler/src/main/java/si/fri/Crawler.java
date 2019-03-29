@@ -93,8 +93,10 @@ public class Crawler implements Runnable
 			LOGGER.info("Executor: " + url + " " + Thread.currentThread().getName() + " "  + executor.toString());
 			//System.out.println("Executor: " + Thread.currentThread().getName() + " " + executor.toString());
 		}
-		if(logger)
+		if(logger){
 			LOGGER.info("Velikost frontier-ja: " + frontier.size());
+			LOGGER.info("Velikost zgodovine: " + zgodovina.size());
+		}
 	}
 
 	public void init() {
@@ -112,6 +114,7 @@ public class Crawler implements Runnable
 
 				// Ali smo dosegli mejo strani
 				if (zgodovina.size() >= LIMIT_HALT_SIZE) {
+					LOGGER.info("WE REACHED THE SIZE LIMIT");
 					halt();
 				}
 
@@ -154,7 +157,8 @@ public class Crawler implements Runnable
 				}
 				catch (Exception e)
 				{
-					System.err.println("err while sleeping because " + e.getMessage());
+					LOGGER.warning("err while sleeping because " + e.getMessage());
+					LOGGER.log(Level.SEVERE,e.getMessage(),e);
 				}
 			}
 		}
@@ -174,7 +178,8 @@ public class Crawler implements Runnable
             LocalDateTime datetime = LocalDateTime.now();
             System.out.println("End time: " + datetime);
 		} catch (final InterruptedException e) {
-			System.err.println("Interrupted while waiting for executor shutdown." + e.getMessage());
+			LOGGER.warning("Interrupted while waiting for executor shutdown." + e.getMessage());
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			Thread.currentThread().interrupt();
 		}
 	}
@@ -227,8 +232,7 @@ public class Crawler implements Runnable
 
 			} catch (Exception e) {
 				LOGGER.severe("Exception when parsing robots for url " + url + " " + e.getMessage());
-//				System.out.println("Exception when parsing robots for url " + url + " " + e.getMessage());
-
+				LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			}
 		}
 
@@ -244,8 +248,10 @@ public class Crawler implements Runnable
 			try {
 				int sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
 				Thread.sleep(sleepTime);
+				LOGGER.info("thread sleeps for " + sleepTime + "ms");
 			} catch (Exception e) {
-				System.out.println("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
+				LOGGER.warning("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
+				LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			}
 
 			// Fetch the HTML code
@@ -342,6 +348,7 @@ public class Crawler implements Runnable
 	public void extractLinks(final Elements elements, final String key) {
 		String p;
 		ParsedUrl parsedUrl;
+		LOGGER.info("extracting links from " + url);
 		for (Element page : elements) {
 			parsedUrl = ParsedUrl.parseUrl(page.attr(key));
 			// https://github.com/iipc/urlcanon
@@ -367,8 +374,8 @@ public class Crawler implements Runnable
 					}
 				}
 				catch (Exception e) {
-					if (logger)
-						LOGGER.info("Not a link on onclick element, " + e.getMessage());
+					LOGGER.warning("Not a link on onclick element, " + e.getMessage());
+					LOGGER.log(Level.SEVERE,e.getMessage(),e);
 				}
 			}
 		}
@@ -475,9 +482,6 @@ public class Crawler implements Runnable
 		}
 
 		try {
-			if (url.contains("prostor4.gov.si")) {
-				System.out.println("TRYING TO REACH PROSTOR4");
-			}
 			Page page = webClient.getPage(url);
 			return page.getWebResponse();
 		} catch (IOException e) {
@@ -485,6 +489,7 @@ public class Crawler implements Runnable
 			corruptSites.put(url, oldValue+1);
 			LOGGER.info("Page " + url + " is in corruptSites map " + oldValue + " times");
 			LOGGER.warning("For '" + url + "': " + e.getMessage());
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			return null;
 		}
 	}
@@ -497,6 +502,7 @@ public class Crawler implements Runnable
 		//PageEntity p = dbManager.duplicateExistsInDB(hash);
 
 		if (hashCode.containsKey(hash)) {
+			LOGGER.info("found duplicated page, saving DUPLICATE to db");
 			pageType = "DUPLICATE";
 
 			String baseUrl = getDomain(url);
@@ -515,30 +521,40 @@ public class Crawler implements Runnable
 			hashCode.put(hash, url);
 
 			String baseUrl = getDomain(url);
-			dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
-			dbManager.addLinkToDB(urlParent, url);
+			synchronized (dbManager) {
+				dbManager.addPageToDB(pageType, baseUrl, url, document.toString().replaceAll("\u0000", ""), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
+				dbManager.addLinkToDB(urlParent, url);
+			}
 		}
 	}
 
 	private void savePageDataToDB(final String urlParent, final String url) {
+		LOGGER.info("Retrieving document from " + urlParent);
 		byte[] data = getBinaryDocument(url);
 		if (data != null) {
 			String code = FilenameUtils.getExtension(url).toUpperCase();
-			dbManager.addPageDataToDB(urlParent, data, code);
+			synchronized (dbManager) {
+				dbManager.addPageDataToDB(urlParent, data, code);
+			}
 		}
 	}
 
 	private void saveImageToDB(final String urlParent, final String url) {
+		LOGGER.info("Retrieving image from " + urlParent);
 		byte[] data = getBinaryDocument(url);
 		if (data != null) {
 			String fileName = FilenameUtils.getName(url);
 			String contentType = FilenameUtils.getExtension(url);
-			dbManager.addImageToDB(urlParent, fileName, contentType, data, new Timestamp(System.currentTimeMillis()));
+			synchronized (dbManager) {
+				dbManager.addImageToDB(urlParent, fileName, contentType, data, new Timestamp(System.currentTimeMillis()));
+			}
 		}
 	}
 
 	private void saveSiteToDB(final String domain, final String robots, final String sitemap) {
-        dbManager.addSiteToDB(domain, robots, sitemap);
+		synchronized (dbManager) {
+			dbManager.addSiteToDB(domain, robots, sitemap);
+		}
     }
 
     private byte[] getBinaryDocument(final String url) {
@@ -550,7 +566,8 @@ public class Crawler implements Runnable
 			stream.close();
 			return data;
 		} catch (IOException e) {
-
+			LOGGER.warning("Can not get binary document, becouse: " + e.getMessage());
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 		}
 		return null;
 	}
@@ -563,7 +580,8 @@ public class Crawler implements Runnable
 			URL base = new URL(url);
 			baseUrl = base.getProtocol() + "://" + base.getHost();
 		} catch (MalformedURLException e) {
-			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
+			LOGGER.warning("For '" + url + "': " + e.getMessage() + " can't get base url");
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 		}
 
 		return baseUrl;
@@ -576,7 +594,8 @@ public class Crawler implements Runnable
 			URL base = new URL(url);
 			domain = base.getHost();
 		} catch (MalformedURLException e) {
-			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
+			LOGGER.warning("For '" + url + "': " + e.getMessage() + " can't get domain");
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 		}
 
 		return domain;
@@ -606,7 +625,7 @@ public class Crawler implements Runnable
 		}
 		catch (NoSuchAlgorithmException e)
 		{
-			e.printStackTrace();
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 		}
 		return generatedText;
 	}

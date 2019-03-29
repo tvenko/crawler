@@ -60,6 +60,7 @@ public class DatabaseManager {
                 beginTx();
                 em.persist(pageDataEntity);
                 commitTx();
+                LOGGER.info("Document from page " + url + " saved to DB; size: " + data.length/8 + "B");
             } catch (Exception e) {
                 rollbackTx();
                 LOGGER.severe("Can't save to page_data db!");
@@ -126,6 +127,7 @@ public class DatabaseManager {
                 beginTx();
                 em.persist(imageEntity);
                 commitTx();
+                LOGGER.info("Image from " + url + " saved to DB; size: " + data.length/8 + "B");
             } catch (Exception e) {
                 rollbackTx();
                 LOGGER.severe("Can't save to image db!");
@@ -137,11 +139,12 @@ public class DatabaseManager {
     }
 
     public void truncateDatabase() {
+        LOGGER.info("truncating database");
         String schemaName = "crawldb";
         String[] tableNames = {"image", "link", "page", "page_data", "site"};
 
         em.getTransaction().begin();
-        em.flush();
+//        em.flush();
         for (String tableName : tableNames) {
             em.createNativeQuery("TRUNCATE TABLE " + schemaName + "." + tableName + " CASCADE").executeUpdate();
         }
