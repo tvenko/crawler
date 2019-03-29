@@ -143,7 +143,8 @@ public class Crawler implements Runnable
 				}
 				catch (Exception e)
 				{
-					System.err.println("err while sleeping because " + e.getMessage());
+					LOGGER.warning("err while sleeping because " + e.getMessage());
+					LOGGER.log(Level.SEVERE,e.getMessage(),e);
 				}
 			}
 		}
@@ -163,7 +164,8 @@ public class Crawler implements Runnable
             LocalDateTime datetime = LocalDateTime.now();
             System.out.println("End time: " + datetime);
 		} catch (final InterruptedException e) {
-			System.err.println("Interrupted while waiting for executor shutdown." + e.getMessage());
+			LOGGER.warning("Interrupted while waiting for executor shutdown." + e.getMessage());
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			Thread.currentThread().interrupt();
 		}
 	}
@@ -216,6 +218,7 @@ public class Crawler implements Runnable
 
 			} catch (Exception e) {
 				LOGGER.severe("Exception when parsing robots for url " + url + " " + e.getMessage());
+				LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			}
 		}
 
@@ -233,7 +236,8 @@ public class Crawler implements Runnable
 				Thread.sleep(sleepTime);
 				LOGGER.info("thread sleeps for " + sleepTime + "ms");
 			} catch (Exception e) {
-				System.out.println("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
+				LOGGER.warning("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
+				LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			}
 
 			// Fetch the HTML code
@@ -356,8 +360,8 @@ public class Crawler implements Runnable
 					}
 				}
 				catch (Exception e) {
-					if (logger)
-						LOGGER.info("Not a link on onclick element, " + e.getMessage());
+					LOGGER.warning("Not a link on onclick element, " + e.getMessage());
+					LOGGER.log(Level.SEVERE,e.getMessage(),e);
 				}
 			}
 		}
@@ -471,6 +475,7 @@ public class Crawler implements Runnable
 			corruptSites.put(url, oldValue+1);
 			LOGGER.info("Page " + url + " is in corruptSites map " + oldValue + " times");
 			LOGGER.warning("For '" + url + "': " + e.getMessage());
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			return null;
 		}
 	}
@@ -503,7 +508,7 @@ public class Crawler implements Runnable
 
 			String baseUrl = getDomain(url);
 			synchronized (dbManager) {
-				dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
+				dbManager.addPageToDB(pageType, baseUrl, url, document.toString().replaceAll("\u0000", ""), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
 				dbManager.addLinkToDB(urlParent, url);
 			}
 		}
@@ -547,7 +552,8 @@ public class Crawler implements Runnable
 			stream.close();
 			return data;
 		} catch (IOException e) {
-
+			LOGGER.warning("Can not get binary document, becouse: " + e.getMessage());
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 		}
 		return null;
 	}
@@ -560,7 +566,8 @@ public class Crawler implements Runnable
 			URL base = new URL(url);
 			baseUrl = base.getProtocol() + "://" + base.getHost();
 		} catch (MalformedURLException e) {
-			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
+			LOGGER.warning("For '" + url + "': " + e.getMessage() + " can't get base url");
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 		}
 
 		return baseUrl;
@@ -573,7 +580,8 @@ public class Crawler implements Runnable
 			URL base = new URL(url);
 			domain = base.getHost();
 		} catch (MalformedURLException e) {
-			System.err.println("For '" + url + "': " + e.getMessage() + " can't get base url");
+			LOGGER.warning("For '" + url + "': " + e.getMessage() + " can't get domain");
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 		}
 
 		return domain;
@@ -603,7 +611,7 @@ public class Crawler implements Runnable
 		}
 		catch (NoSuchAlgorithmException e)
 		{
-			e.printStackTrace();
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
 		}
 		return generatedText;
 	}
