@@ -26,12 +26,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,7 +42,7 @@ public class Crawler implements Runnable
 
 	private final String url;
 	private final String urlParent;
-	private final ExecutorService executor;
+	private ExecutorService executor;
 	private final Map<String, Zgodovina> zgodovina;
 	private final Queue<Frontier> frontier;
 	private final DatabaseManager dbManager;
@@ -58,6 +57,8 @@ public class Crawler implements Runnable
 	private final boolean loggerHTMLUnit;
 	private static final int DEFAULT_CRAWL_DELAY = 4;
 	private static final int LIMIT_HALT_SIZE = 100000;
+
+	Future future;
 
 	private final static Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
@@ -88,14 +89,16 @@ public class Crawler implements Runnable
 	public void run() {
 		visit();
 
-		if(logger)
-			LOGGER.info("Executor: " + url + " " + executor.toString());
+		if(logger) {
+			LOGGER.info("Executor: " + url + " " + Thread.currentThread().getName() + " "  + executor.toString());
+			//System.out.println("Executor: " + Thread.currentThread().getName() + " " + executor.toString());
+		}
 		if(logger)
 			LOGGER.info("Velikost frontier-ja: " + frontier.size());
 	}
 
 	public void init() {
-		Future future = null;
+
 		while (!frontier.isEmpty()){
 			synchronized(frontier) {
 				Frontier f = frontier.remove();
@@ -118,6 +121,8 @@ public class Crawler implements Runnable
 				} else {
 					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger,
 							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent, corruptSites));
+					//while(!future.isDone()){}
+
 				}
 
 			}
@@ -129,15 +134,23 @@ public class Crawler implements Runnable
 			{
 				try
 				{
-					Thread.sleep(10000);
+					//Thread.sleep(10000);
+
+
 
 					while(!future.isDone()){}
+
+					//executor = Executors.newFixedThreadPool(8);
 
 					if (frontier.isEmpty()) {
 						halt();
 					}
-					else
+					else {
+						//executor = Executors.newCachedThreadPool();
+						executor = Executors.newFixedThreadPool(16);
 						init();
+					}
+
 				}
 				catch (Exception e)
 				{
@@ -238,7 +251,7 @@ public class Crawler implements Runnable
 			// Fetch the HTML code
 			if (logger) {
 				LOGGER.info("Trenutni url: " + url + " parent URL: " + urlParent);
-				System.out.println("Trenutni url: " + url);
+				//System.out.println("Trenutni url: " + url);
 			}
 
 			WebResponse response = getWebResponse(url);
