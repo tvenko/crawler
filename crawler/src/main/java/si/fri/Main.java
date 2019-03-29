@@ -5,6 +5,7 @@ import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebClientOptions;
 import si.fri.db.DatabaseManager;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -19,13 +20,11 @@ public class Main {
         ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_PARALLEL_THREADS);
 
         Map<String, Zgodovina> zgodovina = new LinkedHashMap<>();
-
         Queue<Frontier> frontier = new LinkedList<>();
-
         Map<String, String> robotsInfo = new LinkedHashMap<>();
         Map<String, Integer> robotsDelay = new LinkedHashMap<>();
-
         Map<String, String> hashCode = new HashMap<>();
+        Map<String, Integer> coruptSites = new HashMap<>();
 
         List<String> originalSites;
         originalSites = Arrays.asList("evem.gov.si", "www.evem.gov.si", "e-uprava.gov.si", "www.e-uprava.gov.si",
@@ -42,6 +41,14 @@ public class Main {
             dbManager.truncateDatabase();
         } catch (Exception e) {
             System.out.println("Failed to truncate Database" + e.getMessage());
+        }
+
+        // setup logger
+        try {
+            MyLogger.setup();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Problems with creating the log files");
         }
 
         frontier.add(new Frontier("http://evem.gov.si", ""));
@@ -73,7 +80,7 @@ public class Main {
                                         new DatabaseManager(), logger,
                                         loggerHTMLUnit, robotsInfo,
                                         robotsDelay, originalSites,
-                                        hashCode, userAgent);
+                                        hashCode, userAgent, coruptSites);
         crawler.init();
     }
 

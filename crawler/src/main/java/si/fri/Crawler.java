@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Crawler implements Runnable
 {
@@ -51,11 +52,14 @@ public class Crawler implements Runnable
 	private final List<String> originalSites;
 	private final Map<String, String> hashCode;
     private final String useragent;
+    private final Map<String, Integer> corruptSites;
 
     private final boolean logger;
 	private final boolean loggerHTMLUnit;
 	private static final int DEFAULT_CRAWL_DELAY = 4;
 	private static final int LIMIT_HALT_SIZE = 100000;
+
+	private final static Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
 	public Crawler(String url, String urlParent, ExecutorService executor,
 				   Map<String, Zgodovina> zgodovina,
@@ -63,7 +67,8 @@ public class Crawler implements Runnable
 				   boolean logger, boolean loggerHTMLUnit,
 				   Map<String, String> robotsInfo,
 				   Map<String, Integer> robotsDelay, List<String> originalSites,
-				   Map<String, String> hashCode, String useragent) {
+				   Map<String, String> hashCode, String useragent,
+				   Map<String, Integer> corruptSites) {
 		this.url = url;
 		this.urlParent = urlParent;
 		this.executor = executor;
@@ -77,15 +82,16 @@ public class Crawler implements Runnable
 		this.originalSites = originalSites;
 		this.hashCode = hashCode;
 		this.useragent = useragent;
+		this.corruptSites = corruptSites;
 	}
 
 	public void run() {
 		visit();
 
 		if(logger)
-			System.out.println("Executor: " + url + " " + executor.toString());
+			LOGGER.info("Executor: " + url + " " + executor.toString());
 		if(logger)
-			System.out.println("Velikost frontier-ja: " + frontier.size());
+			LOGGER.info("Velikost frontier-ja: " + frontier.size());
 	}
 
 	public void init() {
@@ -111,7 +117,7 @@ public class Crawler implements Runnable
 					zgodovina.get(url).n++;
 				} else {
 					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger,
-							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent));
+							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent, corruptSites));
 				}
 
 			}
@@ -189,6 +195,11 @@ public class Crawler implements Runnable
 			saveSiteToDB(getDomain(url), robots[0], robots[1]);
 		}
 
+		// 3. ali smo jo ze vec kot 5-krat obiskali neuspesno?
+		if (corruptSites.getOrDefault(url, 0) > 5) {
+			return false;
+		}
+
 		String robotsTxtString = robotsInfo.get(baseUrl);
 		if (robotsTxtString != null) {
 
@@ -198,13 +209,12 @@ public class Crawler implements Runnable
 
 				Grant grant = robotsTxt.ask(useragent, url);
 				if (grant == null || grant.hasAccess()) {
-					if (logger)
-						System.out.println("robots allow access for url " + url);
 					return true;
 				}
 
 			} catch (Exception e) {
-				System.out.println("Exception when parsing robots for url " + url + " " + e.getMessage());
+				LOGGER.severe("Exception when parsing robots for url " + url + " " + e.getMessage());
+//				System.out.println("Exception when parsing robots for url " + url + " " + e.getMessage());
 
 			}
 		}
@@ -214,90 +224,100 @@ public class Crawler implements Runnable
 
 	public void visit() {
 
-        zgodovina.put(url, new Zgodovina(url, urlParent));
+		if (!zgodovina.containsKey(url)) {
+			zgodovina.put(url, new Zgodovina(url, urlParent));
 
-        // respect delay
-        try {
-			int sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
-			Thread.sleep(sleepTime);
-		}
-        catch (Exception e) {
-        	System.out.println("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
-		}
+			// respect delay
+			try {
+				int sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
+				Thread.sleep(sleepTime);
+			} catch (Exception e) {
+				System.out.println("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
+			}
 
-		// Fetch the HTML code
-		if(logger)
-			System.out.println("Trenutni url: " + url);
+			// Fetch the HTML code
+			if (logger) {
+				LOGGER.info("Trenutni url: " + url + " parent URL: " + urlParent);
+				System.out.println("Trenutni url: " + url);
+			}
 
-		WebResponse response = getWebResponse(url);
-		if (response != null) {
+			WebResponse response = getWebResponse(url);
+			if (response != null) {
 
-			// PARSE WITH JSOUP
-			Document document = Jsoup.parse(response.getContentAsString());
+				// PARSE WITH JSOUP
+				Document document = Jsoup.parse(response.getContentAsString());
 
-			savePageToDB(document, response.getContentType(), response.getStatusCode());
+				savePageToDB(document, response.getContentType(), response.getStatusCode());
 
 
-			// Parse the HTML to extract a with href attributes
-			Elements linksOnPage = document.select("a[href]");
+				// Parse the HTML to extract a with href attributes
+				Elements linksOnPage = document.select("a[href]");
 
-			String p;
-			ParsedUrl parsedUrl;
-			for (Element page : linksOnPage) {
-				parsedUrl = ParsedUrl.parseUrl(page.attr("abs:href"));
-				// https://github.com/iipc/urlcanon
-				// Make sure that you work with canonicalized URLs only!
-				Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
-				p = parsedUrl.toString();
+				String p;
+				ParsedUrl parsedUrl;
+				for (Element page : linksOnPage) {
+					parsedUrl = ParsedUrl.parseUrl(page.attr("abs:href"));
+					// https://github.com/iipc/urlcanon
+					// Make sure that you work with canonicalized URLs only!
+					Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
+					p = parsedUrl.toString();
 
-				if (p.contains("#")) {
-					p = splitHash(p);
-				}
-				if (!p.contains("(at)") && p.length() > 1) {
-					if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx")) {
-						if (originalSites.contains(getDomain(url))) {
-							savePageDataToDB(url, p);
-						}
-					} else if ((p.contains("http://") || p.contains("https://")) &&
-							(!p.contains(".zip") && !p.contains(".xlsx") &&
-									!p.contains(".xls") && !p.contains(".pps") &&
-									!p.contains(".jpg") && !p.contains(".png") &&
-									!p.contains(".jspx") && !p.contains(".jsp") &&
-									!p.contains(".mp4") && !p.contains(".exe"))) {
+					if (p.contains("#")) {
+						p = splitHash(p);
+					}
+					if (!p.contains("(at)") && p.length() > 1) {
+						if (p.contains(".pdf") || p.contains(".doc") || p.contains(".docx") || p.contains(".ppt") || p.contains(".pptx")) {
+							if (originalSites.contains(getDomain(url))) {
+								savePageDataToDB(url, p);
+							}
+						} else if ((p.contains("http://") || p.contains("https://")) &&
+								(!p.contains(".zip") && !p.contains(".xlsx") &&
+										!p.contains(".xls") && !p.contains(".pps") &&
+										!p.contains(".jpg") && !p.contains(".png") &&
+										!p.contains(".jspx") && !p.contains(".jsp") &&
+										!p.contains(".mp4") && !p.contains(".exe"))) {
 
-						if (shouldIVisit(p)) {
-							frontier.add(new Frontier(p, url));
+							if (shouldIVisit(p)) {
+								frontier.add(new Frontier(p, url));
+							}
 						}
 					}
 				}
-			}
 
 
-			// Parse the HTML to extract onclick events
-			Elements linksOnClickOnPage = document.getElementsByAttribute("onclick");
-            extractLinks(linksOnClickOnPage, "onclick");
+				// Parse the HTML to extract onclick events
+				Elements linksOnClickOnPage = document.getElementsByAttribute("onclick");
+				extractLinks(linksOnClickOnPage, "onclick");
 
 
-			// Parse the HTML to extract imgs with src ending (dot for mark)
-			Elements srcImgs = document.select("img[src$='']");
+				// Parse the HTML to extract imgs with src ending (dot for mark)
+				Elements srcImgs = document.select("img[src$='']");
 
-			for (Element page : srcImgs) {
-				parsedUrl = ParsedUrl.parseUrl(page.attr("abs:src"));
-				// https://github.com/iipc/urlcanon
-				// Make sure that you work with canonicalized URLs only!
-				Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
-				p = parsedUrl.toString();
+				for (Element page : srcImgs) {
+					parsedUrl = ParsedUrl.parseUrl(page.attr("abs:src"));
+					// https://github.com/iipc/urlcanon
+					// Make sure that you work with canonicalized URLs only!
+					Canonicalizer.SEMANTIC_PRECISE.canonicalize(parsedUrl);
+					p = parsedUrl.toString();
 
-				if (p.contains("#")) {
-					p = splitHash(p);
+					if (p.contains("#")) {
+						p = splitHash(p);
+					}
+					if (p.length() > 1) {
+						if (!p.contains("http://") && !p.contains("https://"))
+							p = getBaseUrl(url) + "/" + p;
+						if (originalSites.contains(getDomain(url)))
+							saveImageToDB(url, p);
+					}
 				}
-				if (p.length() > 1) {
-					if (!p.contains("http://") && !p.contains("https://"))
-						p = getBaseUrl(url) + "/" + p;
-					if (originalSites.contains(getDomain(url)))
-						saveImageToDB(url, p);
-				}
+			} else {
+				int oldValue = corruptSites.getOrDefault(url, 0);
+				corruptSites.put(url, oldValue + 1);
+				if (logger)
+					LOGGER.info("Incrementing corrupt site " + url + " to " + oldValue + 1);
 			}
+		} else {
+			LOGGER.info("Page " + url + " already in history");
 		}
 	}
 
@@ -335,7 +355,7 @@ public class Crawler implements Runnable
 				}
 				catch (Exception e) {
 					if (logger)
-						System.out.println("Not a link on onclick element, " + e.getMessage());
+						LOGGER.info("Not a link on onclick element, " + e.getMessage());
 				}
 			}
 		}
@@ -345,6 +365,7 @@ public class Crawler implements Runnable
     public String[] robots(final String baseUrl) {
 
 		String[] tmp = new String[2];
+		LOGGER.info("Geting robbots for: " + baseUrl);
 
 		try (InputStream robotsTxtStream = new URL(baseUrl + "/robots.txt").openStream()) {
 			RobotsTxt robotsTxt = RobotsTxt.read(robotsTxtStream);
@@ -361,7 +382,7 @@ public class Crawler implements Runnable
 				} else {
 					robotsDelay.put(baseUrl, DEFAULT_CRAWL_DELAY);
 					if (logger)
-						System.out.println("crawlDelay is null for page " + baseUrl);
+						LOGGER.info("crawlDelay is null for page " + baseUrl);
 				}
 			}
 
@@ -390,7 +411,7 @@ public class Crawler implements Runnable
 							if (shouldIVisit(p)) {
 								frontier.add(new Frontier(p, baseUrl));
 								if (logger)
-									System.out.println("New url " + p + " added to frontier from sitemap.");
+									LOGGER.info("New url " + p + " added to frontier from sitemap.");
 							}
                         }
                     }
@@ -411,13 +432,14 @@ public class Crawler implements Runnable
 			return tmp;
 		} catch (Exception e) {
 			if (logger) {
-				System.out.println("Cannot parse robots.");
-				e.printStackTrace();
+				LOGGER.warning("Cannot parse robots.");
+				LOGGER.log(Level.WARNING,e.getMessage(),e);
 			}
 		}
 
 		tmp[0] = null;
 		tmp[1] = null;
+		robotsInfo.put(baseUrl, "");
 		robotsDelay.put(baseUrl, DEFAULT_CRAWL_DELAY);
 
 		return tmp;
@@ -440,10 +462,16 @@ public class Crawler implements Runnable
 		}
 
 		try {
+			if (url.contains("prostor4.gov.si")) {
+				System.out.println("TRYING TO REACH PROSTOR4");
+			}
 			Page page = webClient.getPage(url);
 			return page.getWebResponse();
 		} catch (IOException e) {
-			System.err.println("For '" + url + "': " + e.getMessage());
+			int oldValue = corruptSites.getOrDefault(url, 0);
+			corruptSites.put(url, oldValue+1);
+			LOGGER.info("Page " + url + " is in corruptSites map " + oldValue + " times");
+			LOGGER.warning("For '" + url + "': " + e.getMessage());
 			return null;
 		}
 	}
@@ -460,8 +488,10 @@ public class Crawler implements Runnable
 
 			String baseUrl = getDomain(url);
 
-			dbManager.addPageToDB(pageType, baseUrl, url, "", httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
-			dbManager.addLinkToDB(hashCode.get(hash), url);
+			synchronized (dbManager) {
+				dbManager.addPageToDB(pageType, baseUrl, url, "", httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
+				dbManager.addLinkToDB(hashCode.get(hash), url);
+			}
 
 		} else {
 	    	if (pageType.equals("text/html"))

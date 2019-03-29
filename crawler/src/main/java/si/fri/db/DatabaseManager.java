@@ -3,10 +3,13 @@ package si.fri.db;
 import javax.persistence.*;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.logging.Logger;
+import java.util.logging.*;
 
 public class DatabaseManager {
 
     private EntityManager em;
+    private final static Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
     public DatabaseManager() {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("crawler JPA");
@@ -38,7 +41,8 @@ public class DatabaseManager {
                 commitTx();
             } catch (Exception e) {
                 rollbackTx();
-                System.out.println("Can't save to page db!");
+                LOGGER.severe("Can't save to page db!");
+                LOGGER.log(Level.SEVERE,e.getMessage(),e);
             }
         }
     }
@@ -58,8 +62,11 @@ public class DatabaseManager {
                 commitTx();
             } catch (Exception e) {
                 rollbackTx();
-                System.out.println("Can't save to page_data db!");
+                LOGGER.severe("Can't save to page_data db!");
+                LOGGER.log(Level.SEVERE,e.getMessage(),e);
             }
+        } else {
+            LOGGER.info("Page " + url + " is already in DB!");
         }
     }
 
@@ -77,7 +84,8 @@ public class DatabaseManager {
                 commitTx();
             } catch (Exception e) {
                 rollbackTx();
-                System.out.println("Can't save site to db!");
+                LOGGER.severe("Can't save to site db!");
+                LOGGER.log(Level.SEVERE,e.getMessage(),e);
             }
         }
     }
@@ -97,7 +105,8 @@ public class DatabaseManager {
                     commitTx();
                 } catch (Exception e) {
                     rollbackTx();
-                    System.out.println("Can't save link to db!");
+                    LOGGER.severe("Can't save to link db!");
+                    LOGGER.log(Level.SEVERE,e.getMessage(),e);
                 }
             }
         }
@@ -119,10 +128,11 @@ public class DatabaseManager {
                 commitTx();
             } catch (Exception e) {
                 rollbackTx();
-                System.out.println("Can't save image to db!");
+                LOGGER.severe("Can't save to image db!");
+                LOGGER.log(Level.SEVERE,e.getMessage(),e);
             }
         } else {
-            System.out.println("IMAGE NOT ADDED TO DB: " + page.getId() + " : " + fileName);
+            LOGGER.info("IMAGE NOT ADDED TO DB: " + page.getId() + " : " + fileName);
         }
     }
 
