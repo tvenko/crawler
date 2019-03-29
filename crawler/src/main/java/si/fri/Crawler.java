@@ -132,7 +132,7 @@ public class Crawler implements Runnable
 			}
 		}
 
-		synchronized (frontier)
+		/*synchronized (frontier)
 		{
 			if(frontier.isEmpty())
 			{
@@ -156,7 +156,7 @@ public class Crawler implements Runnable
 					LOGGER.log(Level.SEVERE,e.getMessage(),e);
 				}
 			}
-		}
+		}*/
 	}
 
 	private void halt()

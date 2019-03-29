@@ -53,7 +53,7 @@ public class Main {
 
         frontier.add(new Frontier("http://evem.gov.si", ""));
 
-        /*frontier.add(new Frontier("https://e-uprava.gov.si", ""));
+        frontier.add(new Frontier("https://e-uprava.gov.si", ""));
 
         frontier.add(new Frontier("https://podatki.gov.si", ""));
 
@@ -69,7 +69,7 @@ public class Main {
 
         frontier.add(new Frontier("https://www.ess.gov.si", ""));
 
-        frontier.add(new Frontier("http://www.mzz.gov.si", ""));*/
+        frontier.add(new Frontier("http://www.mzz.gov.si", ""));
 
         // TIMESTAMP start
         LocalDateTime datetime = LocalDateTime.now();
