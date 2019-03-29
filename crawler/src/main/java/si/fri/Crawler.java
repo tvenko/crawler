@@ -88,10 +88,11 @@ public class Crawler implements Runnable
 	public void run() {
 		visit();
 
-		if(logger)
+		if(logger) {
 			LOGGER.info("Executor: " + url + " " + executor.toString());
-		if(logger)
 			LOGGER.info("Velikost frontier-ja: " + frontier.size());
+			LOGGER.info("Veliost zgodovine: " + zgodovina.size());
+		}
 	}
 
 	public void init() {
@@ -109,6 +110,7 @@ public class Crawler implements Runnable
 
 				// Ali smo dosegli mejo strani
 				if (zgodovina.size() >= LIMIT_HALT_SIZE) {
+					LOGGER.info("WE REACHED THE SIZE LIMIT");
 					halt();
 				}
 
@@ -214,8 +216,6 @@ public class Crawler implements Runnable
 
 			} catch (Exception e) {
 				LOGGER.severe("Exception when parsing robots for url " + url + " " + e.getMessage());
-//				System.out.println("Exception when parsing robots for url " + url + " " + e.getMessage());
-
 			}
 		}
 
@@ -231,6 +231,7 @@ public class Crawler implements Runnable
 			try {
 				int sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
 				Thread.sleep(sleepTime);
+				LOGGER.info("thread sleeps for " + sleepTime + "ms");
 			} catch (Exception e) {
 				System.out.println("Cannot sleep when visiting this url: " + url + ", reason: " + e.getMessage());
 			}
@@ -329,6 +330,7 @@ public class Crawler implements Runnable
 	public void extractLinks(final Elements elements, final String key) {
 		String p;
 		ParsedUrl parsedUrl;
+		LOGGER.info("extracting links from " + url);
 		for (Element page : elements) {
 			parsedUrl = ParsedUrl.parseUrl(page.attr(key));
 			// https://github.com/iipc/urlcanon
@@ -462,9 +464,6 @@ public class Crawler implements Runnable
 		}
 
 		try {
-			if (url.contains("prostor4.gov.si")) {
-				System.out.println("TRYING TO REACH PROSTOR4");
-			}
 			Page page = webClient.getPage(url);
 			return page.getWebResponse();
 		} catch (IOException e) {
@@ -484,6 +483,7 @@ public class Crawler implements Runnable
 		//PageEntity p = dbManager.duplicateExistsInDB(hash);
 
 		if (hashCode.containsKey(hash)) {
+			LOGGER.info("found duplicated page, saving DUPLICATE to db");
 			pageType = "DUPLICATE";
 
 			String baseUrl = getDomain(url);
@@ -502,30 +502,40 @@ public class Crawler implements Runnable
 			hashCode.put(hash, url);
 
 			String baseUrl = getDomain(url);
-			dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
-			dbManager.addLinkToDB(urlParent, url);
+			synchronized (dbManager) {
+				dbManager.addPageToDB(pageType, baseUrl, url, document.toString(), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
+				dbManager.addLinkToDB(urlParent, url);
+			}
 		}
 	}
 
 	private void savePageDataToDB(final String urlParent, final String url) {
+		LOGGER.info("Retrieving document from " + urlParent);
 		byte[] data = getBinaryDocument(url);
 		if (data != null) {
 			String code = FilenameUtils.getExtension(url).toUpperCase();
-			dbManager.addPageDataToDB(urlParent, data, code);
+			synchronized (dbManager) {
+				dbManager.addPageDataToDB(urlParent, data, code);
+			}
 		}
 	}
 
 	private void saveImageToDB(final String urlParent, final String url) {
+		LOGGER.info("Retrieving image from " + urlParent);
 		byte[] data = getBinaryDocument(url);
 		if (data != null) {
 			String fileName = FilenameUtils.getName(url);
 			String contentType = FilenameUtils.getExtension(url);
-			dbManager.addImageToDB(urlParent, fileName, contentType, data, new Timestamp(System.currentTimeMillis()));
+			synchronized (dbManager) {
+				dbManager.addImageToDB(urlParent, fileName, contentType, data, new Timestamp(System.currentTimeMillis()));
+			}
 		}
 	}
 
 	private void saveSiteToDB(final String domain, final String robots, final String sitemap) {
-        dbManager.addSiteToDB(domain, robots, sitemap);
+		synchronized (dbManager) {
+			dbManager.addSiteToDB(domain, robots, sitemap);
+		}
     }
 
     private byte[] getBinaryDocument(final String url) {
