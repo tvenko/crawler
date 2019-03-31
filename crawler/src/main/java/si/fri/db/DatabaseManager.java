@@ -242,17 +242,17 @@ public class DatabaseManager {
     }
 
     private void beginTx() {
-//        if (!em.getTransaction().isActive())
+        if (!em.getTransaction().isActive())
             em.getTransaction().begin();
     }
 
     private void commitTx() {
-//        if (em.getTransaction().isActive())
+        if (em.getTransaction().isActive())
             em.getTransaction().commit();
     }
 
     private void rollbackTx() {
-//        if (em.getTransaction().isActive())
+        if (em.getTransaction().isActive())
             em.getTransaction().rollback();
     }
 }
