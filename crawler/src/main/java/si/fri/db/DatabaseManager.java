@@ -2,6 +2,7 @@ package si.fri.db;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.logging.*;
@@ -16,10 +17,30 @@ public class DatabaseManager {
         em = emf.createEntityManager();
     }
 
-    public void addPageToDB(String pageTypeCode, String baseUrl, String url, String htmlContent, int httpStatusCode, Timestamp timeAccessed, String hash) {
+    public void addPageToDB(String url, String parentUrl) {
         // check if page already exists in db
         if (getPageByURL(url) == null) {
             PageEntity pageEntity = new PageEntity();
+            pageEntity.setUrl(url);
+            pageEntity.setHtmlContent(parentUrl);
+            pageEntity.setHttpStatusCode(0);
+            try {
+                beginTx();
+                em.persist(pageEntity);
+                commitTx();
+            } catch (Exception e) {
+                rollbackTx();
+                LOGGER.severe("Can't save page to db!");
+                LOGGER.log(Level.SEVERE,e.getMessage(),e);
+            }
+        }
+    }
+
+    public void addParsedPageToDB(String pageTypeCode, String baseUrl, String url, String htmlContent, int httpStatusCode, Timestamp timeAccessed, String hash) {
+        // check if page already exists in db
+        PageEntity p = getPageByURL(url);
+        if (p != null) {
+            PageEntity pageEntity = p;
             pageEntity.setUrl(url);
             pageEntity.setHtmlContent(htmlContent);
             pageEntity.setHttpStatusCode(httpStatusCode);
@@ -37,11 +58,13 @@ public class DatabaseManager {
 
             try {
                 beginTx();
-                em.persist(pageEntity);
+                p.setId(p.getId());
+                p = em.merge(pageEntity);
+                //em.persist(pageEntity);
                 commitTx();
             } catch (Exception e) {
                 rollbackTx();
-                LOGGER.severe("Can't save to page db!");
+                LOGGER.severe("Can't save pared page to db!");
                 LOGGER.log(Level.SEVERE,e.getMessage(),e);
             }
         }
@@ -178,6 +201,38 @@ public class DatabaseManager {
                     .getSingleResult();
         } catch (NoResultException e) {
             return null;
+        }
+    }
+
+    public PageEntity getNextPage() {
+        try {
+            PageEntity p = (PageEntity)em.createQuery("SELECT p FROM PageEntity p WHERE p.httpStatusCode = :httpStatusCode")
+                    .setParameter("httpStatusCode", 0)
+                    .getResultList().get(0);
+            try {
+                beginTx();
+                p.setId(p.getId());
+                p.setHttpStatusCode(1);
+                p = em.merge(p);
+                commitTx();
+            } catch (Exception e) {
+                rollbackTx();
+            }
+
+            return p;
+
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    public int pageSize() {
+        try {
+            return em.createQuery("SELECT p FROM PageEntity p WHERE p.hash IS NOT NULL")
+                    .getResultList().size();
+
+        } catch (NoResultException e) {
+            return 0;
         }
     }
 
