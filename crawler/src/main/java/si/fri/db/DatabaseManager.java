@@ -191,7 +191,7 @@ public class DatabaseManager {
         }
     }
 
-    public PageEntity duplicateExistsInDB(String hash) {
+    public PageEntity duplicateExistsInDBHash(String hash) {
         try {
             return (PageEntity)em.createQuery("SELECT p FROM PageEntity p WHERE p.hash = :hash")
                     .setParameter("hash", hash)
@@ -199,6 +199,19 @@ public class DatabaseManager {
         } catch (NoResultException e) {
             return null;
         }
+    }
+
+    public boolean duplicateExistsInDBUrl(String url) {
+        try {
+            List results = em.createQuery("SELECT p FROM PageEntity p WHERE p.url = :url")
+                    .setParameter("url", url)
+                    .getResultList();
+            return results.isEmpty();
+        }
+        catch (Exception e) {
+            return true;
+        }
+
     }
 
     private boolean hasLinksThisRecord(String fromUrl, String toUrl) {

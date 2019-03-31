@@ -16,6 +16,7 @@ import org.jsoup.select.Elements;
 import org.netpreserve.urlcanon.Canonicalizer;
 import org.netpreserve.urlcanon.ParsedUrl;
 import si.fri.db.DatabaseManager;
+import si.fri.db.PageEntity;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -97,66 +98,55 @@ public class Crawler implements Runnable
 			LOGGER.info("Velikost frontier-ja: " + frontier.size());
 			LOGGER.info("Velikost zgodovine: " + zgodovina.size());
 		}
+
+		if(frontier.isEmpty()) {
+			try {
+				Thread.sleep(10000);
+			}
+			catch (Exception e) {
+				LOGGER.warning("err while sleeping because " + e.getMessage());
+				LOGGER.log(Level.SEVERE,e.getMessage(),e);
+			}
+		}
 		init();
 	}
 
 	public void init() {
 
+		try {
+			Thread.sleep(500);
+		}
+		catch (Exception e) {
+			LOGGER.warning("err while sleeping because " + e.getMessage());
+			LOGGER.log(Level.SEVERE,e.getMessage(),e);
+		}
+
+		//System.out.println("init");
 		while (!frontier.isEmpty()){
 			synchronized(frontier) {
 				Frontier f = frontier.remove();
-				String url = f.getUrl();
+				String u = f.getUrl();
 				String urlParent = f.getUrlParent();
 				if (urlParent.equals("")) {
-					String baseUrl = getBaseUrl(url);
+					String baseUrl = getBaseUrl(u);
 					String[] robots = robots(baseUrl);
-					saveSiteToDB(getDomain(url), robots[0], robots[1]);
+					saveSiteToDB(getDomain(u), robots[0], robots[1]);
 				}
 
+				//TODO
 				// Ali smo dosegli mejo strani
 				if (zgodovina.size() >= LIMIT_HALT_SIZE) {
 					LOGGER.info("WE REACHED THE SIZE LIMIT");
 					halt();
 				}
 
-				// Ali smo stran že obiskali?
-				if (zgodovina.containsKey(url)) {
-					zgodovina.get(url).n++;
-				} else {
-					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger,
+				if(dbManager.duplicateExistsInDBUrl(u)){
+					future = executor.submit(new Crawler(u, urlParent, executor, zgodovina, frontier, dbManager, logger,
 							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent, corruptSites));
-					//while(!future.isDone()){}
-
 				}
 
 			}
 		}
-
-		/*synchronized (frontier)
-		{
-			if(frontier.isEmpty())
-			{
-				try
-				{
-					Thread.sleep(10000);
-
-					//while(!future.isDone()){}
-
-					//executor = Executors.newFixedThreadPool(8);
-
-					if (frontier.isEmpty()) {
-						halt();
-					}
-					else
-						init();
-				}
-				catch (Exception e)
-				{
-					LOGGER.warning("err while sleeping because " + e.getMessage());
-					LOGGER.log(Level.SEVERE,e.getMessage(),e);
-				}
-			}
-		}*/
 	}
 
 	private void halt()
@@ -168,7 +158,6 @@ public class Crawler implements Runnable
 				System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
 				executor.shutdownNow();
 			}
-			printHistory();
             // TIMESTAMP end
             LocalDateTime datetime = LocalDateTime.now();
             System.out.println("End time: " + datetime);
@@ -179,18 +168,6 @@ public class Crawler implements Runnable
 		}
 	}
 
-	private void printHistory()
-	{
-		System.out.println("--------------------Zgodovina ----------------");
-		for (String name : zgodovina.keySet()) {
-
-			String key = name;
-			String value = zgodovina.get(name).urlParent;
-			System.out.println(key + " " + value);
-		}
-		System.out.println("-------------------- Konec zgodovine ----------------");
-		System.out.println("Velikost zgodovine: " + zgodovina.size());
-	}
 
 	private boolean shouldIVisit(final String url) {
 
@@ -235,10 +212,9 @@ public class Crawler implements Runnable
 	}
 
 	public void visit() {
-
-		if (!zgodovina.containsKey(url)) {
-			zgodovina.put(url, new Zgodovina(url, urlParent));
-
+		//if (!zgodovina.containsKey(url)) {
+			//zgodovina.put(url, new Zgodovina(url, urlParent));
+		if(dbManager.duplicateExistsInDBUrl(url)) {
 			// respect delay
 			try {
 				int sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
@@ -494,9 +470,9 @@ public class Crawler implements Runnable
 		//hash
 		String hash = generateHash(document.toString());
 
-		//PageEntity p = dbManager.duplicateExistsInDB(hash);
+		PageEntity p = dbManager.duplicateExistsInDBHash(hash);
 
-		if (hashCode.containsKey(hash)) {
+		if (p != null) {
 			LOGGER.info("found duplicated page, saving DUPLICATE to db");
 			pageType = "DUPLICATE";
 
@@ -513,7 +489,7 @@ public class Crawler implements Runnable
 			else
 				pageType = "BINARY";
 
-			hashCode.put(hash, url);
+			//hashCode.put(hash, url);
 
 			String baseUrl = getDomain(url);
 			synchronized (dbManager) {
