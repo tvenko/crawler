@@ -99,7 +99,7 @@ public class Crawler implements Runnable
 			LOGGER.info("Velikost zgodovine: " + zgodovina.size());
 		}
 
-		if(frontier.isEmpty()) {
+		/*if(frontier.isEmpty()) {
 			try {
 				Thread.sleep(10000);
 			}
@@ -107,19 +107,13 @@ public class Crawler implements Runnable
 				LOGGER.warning("err while sleeping because " + e.getMessage());
 				LOGGER.log(Level.SEVERE,e.getMessage(),e);
 			}
-		}
+		}*/
 		init();
 	}
 
 	public void init() {
 
-		try {
-			Thread.sleep(500);
-		}
-		catch (Exception e) {
-			LOGGER.warning("err while sleeping because " + e.getMessage());
-			LOGGER.log(Level.SEVERE,e.getMessage(),e);
-		}
+
 
 		//System.out.println("init");
 		while (!frontier.isEmpty()){
@@ -144,7 +138,6 @@ public class Crawler implements Runnable
 					future = executor.submit(new Crawler(u, urlParent, executor, zgodovina, frontier, dbManager, logger,
 							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent, corruptSites));
 				}
-
 			}
 		}
 	}

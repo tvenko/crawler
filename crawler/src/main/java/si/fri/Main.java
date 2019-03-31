@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
 
 public class Main {
 
@@ -17,7 +18,9 @@ public class Main {
 
     public static void main(String[] args) {
 
-        ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_PARALLEL_THREADS);
+        int threads = Runtime.getRuntime().availableProcessors();
+
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
 
         Map<String, Zgodovina> zgodovina = new LinkedHashMap<>();
         Queue<Frontier> frontier = new LinkedList<>();
@@ -81,6 +84,12 @@ public class Main {
                                         loggerHTMLUnit, robotsInfo,
                                         robotsDelay, originalSites,
                                         hashCode, userAgent, coruptSites);
+
+        try {
+            Thread.sleep(500);
+        }
+        catch (Exception e) {}
+
         crawler.init();
     }
 
