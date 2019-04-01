@@ -3,17 +3,13 @@ package si.fri;
 
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebClientOptions;
-import org.jsoup.nodes.Document;
 import si.fri.db.DatabaseManager;
-import si.fri.db.PageEntity;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
 
 public class Main {
 
@@ -21,10 +17,9 @@ public class Main {
 
     public static void main(String[] args) {
 
-        //int threads = Runtime.getRuntime().availableProcessors();
-
         ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_PARALLEL_THREADS);
 
+        Map<String, Zgodovina> zgodovina = new LinkedHashMap<>();
         Queue<Frontier> frontier = new LinkedList<>();
         Map<String, String> robotsInfo = new LinkedHashMap<>();
         Map<String, Integer> robotsDelay = new LinkedHashMap<>();
@@ -81,17 +76,11 @@ public class Main {
         System.out.println("Start time: " + datetime);
 
         Crawler crawler = new Crawler("", "",
-                                        executor, frontier,
+                                        executor, zgodovina, frontier,
                                         new DatabaseManager(), logger,
                                         loggerHTMLUnit, robotsInfo,
                                         robotsDelay, originalSites,
                                         hashCode, userAgent, coruptSites);
-
-        try {
-            Thread.sleep(500);
-        }
-        catch (Exception e) {}
-
         crawler.init();
     }
 

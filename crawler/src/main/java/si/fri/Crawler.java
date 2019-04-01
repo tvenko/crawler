@@ -16,7 +16,6 @@ import org.jsoup.select.Elements;
 import org.netpreserve.urlcanon.Canonicalizer;
 import org.netpreserve.urlcanon.ParsedUrl;
 import si.fri.db.DatabaseManager;
-import si.fri.db.PageEntity;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -44,6 +43,7 @@ public class Crawler implements Runnable
 	private final String url;
 	private final String urlParent;
 	private ExecutorService executor;
+	private final Map<String, Zgodovina> zgodovina;
 	private final Queue<Frontier> frontier;
 	private final DatabaseManager dbManager;
 	private final Map<String, String> robotsInfo;
@@ -63,6 +63,7 @@ public class Crawler implements Runnable
 	private final static Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
 	public Crawler(String url, String urlParent, ExecutorService executor,
+				   Map<String, Zgodovina> zgodovina,
 				   Queue<Frontier> frontier, DatabaseManager dbManager,
 				   boolean logger, boolean loggerHTMLUnit,
 				   Map<String, String> robotsInfo,
@@ -72,6 +73,7 @@ public class Crawler implements Runnable
 		this.url = url;
 		this.urlParent = urlParent;
 		this.executor = executor;
+		this.zgodovina = zgodovina;
 		this.frontier = frontier;
 		this.dbManager = dbManager;
 		this.logger = logger;
@@ -93,20 +95,9 @@ public class Crawler implements Runnable
 		}
 		if(logger){
 			LOGGER.info("Velikost frontier-ja: " + frontier.size());
+			LOGGER.info("Velikost zgodovine: " + zgodovina.size());
 		}
-
-
-		while(frontier.isEmpty())
-		{
-			synchronized(dbManager) {
-				PageEntity p = dbManager.getNextPage();
-				future = executor.submit(new Crawler(p.getUrl(), p.getHtmlContent(), executor, frontier, dbManager, logger,
-						loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent, corruptSites));
-
-				if(dbManager.pageSize() >= LIMIT_HALT_SIZE)
-					halt();
-			}
-		}
+		init();
 	}
 
 	public void init() {
@@ -114,34 +105,70 @@ public class Crawler implements Runnable
 		while (!frontier.isEmpty()){
 			synchronized(frontier) {
 				Frontier f = frontier.remove();
-				String u = f.getUrl();
+				String url = f.getUrl();
 				String urlParent = f.getUrlParent();
 				if (urlParent.equals("")) {
-					String baseUrl = getBaseUrl(u);
+					String baseUrl = getBaseUrl(url);
 					String[] robots = robots(baseUrl);
-					saveSiteToDB(getDomain(u), robots[0], robots[1]);
+					saveSiteToDB(getDomain(url), robots[0], robots[1]);
 				}
 
-				synchronized(dbManager) {
-					if (dbManager.duplicateExistsInDBUrl(u)) {
-						future = executor.submit(new Crawler(u, urlParent, executor, frontier, dbManager, logger,
-								loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent, corruptSites));
-					}
+				// Ali smo dosegli mejo strani
+				if (zgodovina.size() >= LIMIT_HALT_SIZE) {
+					LOGGER.info("WE REACHED THE SIZE LIMIT");
+					halt();
 				}
+
+				// Ali smo stran že obiskali?
+				if (zgodovina.containsKey(url)) {
+					zgodovina.get(url).n++;
+				} else {
+					future = executor.submit(new Crawler(url, urlParent, executor, zgodovina, frontier, dbManager, logger,
+							loggerHTMLUnit, robotsInfo, robotsDelay, originalSites, hashCode, useragent, corruptSites));
+					//while(!future.isDone()){}
+
+				}
+
 			}
 		}
 
+		/*synchronized (frontier)
+		{
+			if(frontier.isEmpty())
+			{
+				try
+				{
+					Thread.sleep(10000);
 
+					//while(!future.isDone()){}
+
+					//executor = Executors.newFixedThreadPool(8);
+
+					if (frontier.isEmpty()) {
+						halt();
+					}
+					else
+						init();
+				}
+				catch (Exception e)
+				{
+					LOGGER.warning("err while sleeping because " + e.getMessage());
+					LOGGER.log(Level.SEVERE,e.getMessage(),e);
+				}
+			}
+		}*/
 	}
 
 	private void halt()
 	{
+		System.out.println("----" + frontier.size());
 		try {
 			executor.awaitTermination(10, TimeUnit.SECONDS);
 			if (!executor.isTerminated()) {
 				System.err.println("Timed out waiting for executor to terminate cleanly. Shutting down.");
 				executor.shutdownNow();
 			}
+			printHistory();
             // TIMESTAMP end
             LocalDateTime datetime = LocalDateTime.now();
             System.out.println("End time: " + datetime);
@@ -152,6 +179,18 @@ public class Crawler implements Runnable
 		}
 	}
 
+	private void printHistory()
+	{
+		System.out.println("--------------------Zgodovina ----------------");
+		for (String name : zgodovina.keySet()) {
+
+			String key = name;
+			String value = zgodovina.get(name).urlParent;
+			System.out.println(key + " " + value);
+		}
+		System.out.println("-------------------- Konec zgodovine ----------------");
+		System.out.println("Velikost zgodovine: " + zgodovina.size());
+	}
 
 	private boolean shouldIVisit(final String url) {
 
@@ -196,9 +235,10 @@ public class Crawler implements Runnable
 	}
 
 	public void visit() {
-		//if (!zgodovina.containsKey(url)) {
-			//zgodovina.put(url, new Zgodovina(url, urlParent));
-		//if(dbManager.duplicateExistsInDBUrl(url)) {
+
+		if (!zgodovina.containsKey(url)) {
+			zgodovina.put(url, new Zgodovina(url, urlParent));
+
 			// respect delay
 			try {
 				int sleepTime = robotsDelay.get(getBaseUrl(url)) * 1000;
@@ -221,7 +261,7 @@ public class Crawler implements Runnable
 				// PARSE WITH JSOUP
 				Document document = Jsoup.parse(response.getContentAsString());
 
-				saveParsedPageToDB(document, response.getContentType(), response.getStatusCode());
+				savePageToDB(document, response.getContentType(), response.getStatusCode());
 
 
 				// Parse the HTML to extract a with href attributes
@@ -252,8 +292,7 @@ public class Crawler implements Runnable
 										!p.contains(".mp4") && !p.contains(".exe"))) {
 
 							if (shouldIVisit(p)) {
-								savePageToDB(p, url);
-								//frontier.add(new Frontier(p, url));
+								frontier.add(new Frontier(p, url));
 							}
 						}
 					}
@@ -291,9 +330,9 @@ public class Crawler implements Runnable
 				if (logger)
 					LOGGER.info("Incrementing corrupt site " + url + " to " + oldValue + 1);
 			}
-		/*} else {
+		} else {
 			LOGGER.info("Page " + url + " already in history");
-		}*/
+		}
 	}
 
 	public String splitHash(final String p) {
@@ -326,8 +365,7 @@ public class Crawler implements Runnable
 				try {
 					String uri = new URL(p).toURI().toString();
 					if (shouldIVisit(uri)) {
-						savePageToDB(uri, url);
-						//frontier.add(new Frontier(uri, url));
+						frontier.add(new Frontier(uri, url));
 					}
 				}
 				catch (Exception e) {
@@ -386,8 +424,7 @@ public class Crawler implements Runnable
                             p = parsedUrl.toString();
 
 							if (shouldIVisit(p)) {
-								//frontier.add(new Frontier(p, baseUrl));
-								savePageToDB(p, baseUrl);
+								frontier.add(new Frontier(p, baseUrl));
 								if (logger)
 									LOGGER.info("New url " + p + " added to frontier from sitemap.");
 							}
@@ -452,21 +489,21 @@ public class Crawler implements Runnable
 		}
 	}
 
-    private void saveParsedPageToDB(final Document document, String pageType, final int httpStatusCode) {
+    private void savePageToDB(final Document document, String pageType, final int httpStatusCode) {
 
 		//hash
 		String hash = generateHash(document.toString());
 
-		PageEntity p = dbManager.duplicateExistsInDBHash(hash);
+		//PageEntity p = dbManager.duplicateExistsInDB(hash);
 
-		if (p != null) {
+		if (hashCode.containsKey(hash)) {
 			LOGGER.info("found duplicated page, saving DUPLICATE to db");
 			pageType = "DUPLICATE";
 
 			String baseUrl = getDomain(url);
 
 			synchronized (dbManager) {
-				dbManager.addParsedPageToDB(pageType, baseUrl, url, "", httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
+				dbManager.addPageToDB(pageType, baseUrl, url, "", httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
 				dbManager.addLinkToDB(hashCode.get(hash), url);
 			}
 
@@ -476,20 +513,13 @@ public class Crawler implements Runnable
 			else
 				pageType = "BINARY";
 
-			//hashCode.put(hash, url);
+			hashCode.put(hash, url);
 
 			String baseUrl = getDomain(url);
 			synchronized (dbManager) {
-				dbManager.addParsedPageToDB(pageType, baseUrl, url, document.toString().replaceAll("\u0000", ""), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
+				dbManager.addPageToDB(pageType, baseUrl, url, document.toString().replaceAll("\u0000", ""), httpStatusCode, new Timestamp(System.currentTimeMillis()), hash);
 				dbManager.addLinkToDB(urlParent, url);
 			}
-		}
-	}
-
-	private void savePageToDB(String url, String urlParent) {
-		synchronized (dbManager) {
-			LOGGER.info("Saving page to db" + url);
-			dbManager.addPageToDB(url, urlParent);
 		}
 	}
 

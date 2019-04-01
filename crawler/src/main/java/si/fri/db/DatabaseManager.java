@@ -2,7 +2,6 @@ package si.fri.db;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.logging.*;
@@ -17,30 +16,10 @@ public class DatabaseManager {
         em = emf.createEntityManager();
     }
 
-    public void addPageToDB(String url, String parentUrl) {
+    public void addPageToDB(String pageTypeCode, String baseUrl, String url, String htmlContent, int httpStatusCode, Timestamp timeAccessed, String hash) {
         // check if page already exists in db
         if (getPageByURL(url) == null) {
             PageEntity pageEntity = new PageEntity();
-            pageEntity.setUrl(url);
-            pageEntity.setHtmlContent(parentUrl);
-            pageEntity.setHttpStatusCode(0);
-            try {
-                beginTx();
-                em.persist(pageEntity);
-                commitTx();
-            } catch (Exception e) {
-                rollbackTx();
-                LOGGER.severe("Can't save page to db!");
-                LOGGER.log(Level.SEVERE,e.getMessage(),e);
-            }
-        }
-    }
-
-    public void addParsedPageToDB(String pageTypeCode, String baseUrl, String url, String htmlContent, int httpStatusCode, Timestamp timeAccessed, String hash) {
-        // check if page already exists in db
-        PageEntity p = getPageByURL(url);
-        if (p != null) {
-            PageEntity pageEntity = p;
             pageEntity.setUrl(url);
             pageEntity.setHtmlContent(htmlContent);
             pageEntity.setHttpStatusCode(httpStatusCode);
@@ -58,13 +37,11 @@ public class DatabaseManager {
 
             try {
                 beginTx();
-                p.setId(p.getId());
-                p = em.merge(pageEntity);
-                //em.persist(pageEntity);
+                em.persist(pageEntity);
                 commitTx();
             } catch (Exception e) {
                 rollbackTx();
-                LOGGER.severe("Can't save pared page to db!");
+                LOGGER.severe("Can't save to page db!");
                 LOGGER.log(Level.SEVERE,e.getMessage(),e);
             }
         }
@@ -204,38 +181,6 @@ public class DatabaseManager {
         }
     }
 
-    public PageEntity getNextPage() {
-        try {
-            PageEntity p = (PageEntity)em.createQuery("SELECT p FROM PageEntity p WHERE p.httpStatusCode = :httpStatusCode")
-                    .setParameter("httpStatusCode", 0)
-                    .getResultList().get(0);
-            try {
-                beginTx();
-                p.setId(p.getId());
-                p.setHttpStatusCode(1);
-                p = em.merge(p);
-                commitTx();
-            } catch (Exception e) {
-                rollbackTx();
-            }
-
-            return p;
-
-        } catch (NoResultException e) {
-            return null;
-        }
-    }
-
-    public int pageSize() {
-        try {
-            return em.createQuery("SELECT p FROM PageEntity p WHERE p.hash IS NOT NULL")
-                    .getResultList().size();
-
-        } catch (NoResultException e) {
-            return 0;
-        }
-    }
-
     private DataTypeEntity getDataType(String code) {
         try {
             return (DataTypeEntity)em.createQuery("SELECT dt FROM DataTypeEntity dt WHERE dt.code = :code")
@@ -246,7 +191,7 @@ public class DatabaseManager {
         }
     }
 
-    public PageEntity duplicateExistsInDBHash(String hash) {
+    public PageEntity duplicateExistsInDB(String hash) {
         try {
             return (PageEntity)em.createQuery("SELECT p FROM PageEntity p WHERE p.hash = :hash")
                     .setParameter("hash", hash)
@@ -254,19 +199,6 @@ public class DatabaseManager {
         } catch (NoResultException e) {
             return null;
         }
-    }
-
-    public boolean duplicateExistsInDBUrl(String url) {
-        try {
-            List results = em.createQuery("SELECT p FROM PageEntity p WHERE p.url = :url")
-                    .setParameter("url", url)
-                    .getResultList();
-            return results.isEmpty();
-        }
-        catch (Exception e) {
-            return true;
-        }
-
     }
 
     private boolean hasLinksThisRecord(String fromUrl, String toUrl) {
