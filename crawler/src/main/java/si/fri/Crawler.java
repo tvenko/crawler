@@ -304,6 +304,13 @@ public class Crawler implements Runnable
 				extractLinks(linksOnClickOnPage, "onclick");
 
 
+				// get base tag for imgs
+                Elements baseTag = document.getElementsByTag("base");
+                String baseUrlTag = "";
+                if (!baseTag.isEmpty()) {
+                    baseUrlTag = baseTag.get(0).baseUri();
+                }
+
 				// Parse the HTML to extract imgs with src ending (dot for mark)
 				Elements srcImgs = document.select("img[src$='']");
 
@@ -318,8 +325,14 @@ public class Crawler implements Runnable
 						p = splitHash(p);
 					}
 					if (p.length() > 1) {
-						if (!p.contains("http://") && !p.contains("https://"))
-							p = getBaseUrl(url) + "/" + p;
+						if (!p.contains("http://") && !p.contains("https://")) {
+						    if (baseUrlTag.equals("")) {
+                                p = getBaseUrl(url) + "/" + p;
+                            }
+						    else {
+						        p = baseUrlTag + p;
+                            }
+                        }
 						if (originalSites.contains(getDomain(url)))
 							saveImageToDB(url, p);
 					}
