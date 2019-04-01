@@ -1,18 +1,10 @@
-# IEPS_assignment_1_web_crawler
-TODO
+# IEPS assignment 1: web crawler
+- Project for WIER, masters course at FRI Faculty for computer and information science, University of Ljubljana in 2019.
+- Authors: Julija Petrič (@JulijaPet), Ladislav Škufca (@ladislavskufca) and Tilen Venko (@tvenko).
+- rules: http://zitnik.si/teaching/wier/PA1.html
 
-
-# LINK DO NAVODIL:
-http://zitnik.si/teaching/wier/PA1.html
-
-# What to submit
-
-Only one of the group members should make a submission of the assignment to moodle. The submission should contain only a link to the repository that contains the following:
-
-a file db.gz - Crawldb database dump pg_dump (dbname) | gzip > db.gz (The dump must contain only data from the sites given as a seed URL list above!).
-a file report.pdf - PDF report.
-a file README.md - Short description of the project and instructions to install, set up and run the crawler.
-a folder crawler - Implementation of the crawler.
+# Basic description
+Crawler is used to crawl .gov.si sites (bfs algorithm) and in written in java. All the libraries that were used are listed in main pom.xml.
 
 # Build && install
 
@@ -23,8 +15,9 @@ docker run -d --name pg-database-crawler -e POSTGRES_USER=postgres -e POSTGRES_P
 
 \#2 In newly created database run [script](https://github.com/ladislavskufca/IEPS_assignment_1_web_crawler/blob/master/crawldb.sql) - use IntelliJ SQL console, cp content of .sql and run query
 
+\#3: 
 ```
-\#3 mvn clean install
+mvn clean install
 ```
 
 (\#4 For viewing db content, connect to database with IDE (in IntelliJ: View->Tools view->Database, add database; in tab schemas choose only schema crawldb))
