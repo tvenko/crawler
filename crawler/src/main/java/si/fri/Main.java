@@ -5,6 +5,8 @@ import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebClientOptions;
 import si.fri.db.DatabaseManager;
 
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -36,7 +38,8 @@ public class Main {
         String userAgent = setAndGetUserAgent();
 
         // empty DB
-        DatabaseManager dbManager = new DatabaseManager();
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("crawler JPA");
+        DatabaseManager dbManager = new DatabaseManager(emf);
         try {
             dbManager.truncateDatabase();
         } catch (Exception e) {
@@ -77,7 +80,7 @@ public class Main {
 
         Crawler crawler = new Crawler("", "",
                                         executor, zgodovina, frontier,
-                                        new DatabaseManager(), logger,
+                                        new DatabaseManager(emf), logger,
                                         loggerHTMLUnit, robotsInfo,
                                         robotsDelay, originalSites,
                                         hashCode, userAgent, coruptSites);
