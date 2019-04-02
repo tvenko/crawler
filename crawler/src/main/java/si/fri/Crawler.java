@@ -298,18 +298,16 @@ public class Crawler implements Runnable
 					}
 				}
 
-
-				// Parse the HTML to extract onclick events
-				Elements linksOnClickOnPage = document.getElementsByAttribute("onclick");
-				extractLinks(linksOnClickOnPage, "onclick");
-
-
-				// get base tag for imgs
+				// get base tag from site
                 Elements baseTag = document.getElementsByTag("base");
                 String baseUrlTag = "";
                 if (!baseTag.isEmpty()) {
                     baseUrlTag = baseTag.get(0).baseUri();
                 }
+
+				// Parse the HTML to extract onclick events
+				Elements linksOnClickOnPage = document.getElementsByAttribute("onclick");
+				extractLinks(linksOnClickOnPage, "onclick", baseUrlTag);
 
 				// Parse the HTML to extract imgs with src ending (dot for mark)
 				Elements srcImgs = document.select("img[src$='']");
@@ -353,7 +351,7 @@ public class Crawler implements Runnable
 		return tmp[0];
 	}
 
-	public void extractLinks(final Elements elements, final String key) {
+	public void extractLinks(final Elements elements, final String key, final String baseUrlTag) {
 		String p;
 		ParsedUrl parsedUrl;
 		LOGGER.info("extracting links from " + url);
@@ -372,6 +370,13 @@ public class Crawler implements Runnable
 				else if (p.contains("location.assign")) {
 					p = p.replace("document.location.assign(", "");
 					p = p.replace(")", "");
+				}
+
+				if (baseUrlTag.equals("")) {
+					p = getBaseUrl(url) + "/" + p;
+				}
+				else {
+					p = baseUrlTag + p;
 				}
 
 				/* is URL valid*/
